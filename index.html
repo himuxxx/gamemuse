@@ -65,7 +65,7 @@
       <article class="game-tile ludo-tile">
         <div class="tile-art ludo-art" aria-hidden="true">🎲</div>
         <h3>Ludo</h3>
-        <p>Red vs Yellow, 4 tokens each. Roll a 6 to leave home, capture on the way, exact roll to finish.</p>
+        <p>Yellow vs Red, 4 tokens each. Roll a 6 to leave home, capture on the way, exact roll to finish.</p>
         <button id="playLudoBtn" class="btn primary big">▶ Play Ludo</button>
       </article>
       <article class="game-tile chess-tile">
@@ -81,7 +81,7 @@
   <!-- Ludo (IDs and logic unchanged; restyled only) -->
   <section class="card game-card" id="ludoView" hidden>
     <button id="backFromLudo" class="btn small">← All games</button>
-    <h2>Ludo — Red vs Yellow</h2>
+    <h2>Ludo — Yellow vs Red</h2>
     <p class="muted">
       <strong>Stake match vs Computer:</strong> you pay <strong>10 coins</strong> to enter.
       Winner gets <strong>15 coins</strong>, <strong>5 coins</strong> go to system commission (10 + 10 = 20 pot).
@@ -99,32 +99,43 @@
       <span id="turnLabel">Log in, then start a match.</span>
       <span id="stakeLabel" class="pill">No active stake</span>
     </div>
-
-    <div class="board-wrap wood-frame">
-      <div id="board" class="board" aria-label="Ludo board"></div>
-      <div id="tokensLayer" class="tokens-layer"></div>
-    </div>
-
-    <div class="dice-row">
-      <div class="dice-scene" id="diceScene">
-        <div id="dice" class="dice" title="Dice">
-          <div class="face face-1"><span></span></div>
-          <div class="face face-2"><span></span><span></span></div>
-          <div class="face face-3"><span></span><span></span><span></span></div>
-          <div class="face face-4"><span></span><span></span><span></span><span></span></div>
-          <div class="face face-5"><span></span><span></span><span></span><span></span><span></span></div>
-          <div class="face face-6"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="dice-tray three-off" id="diceTray">
+      <div class="dice-tray-inner">
+        <div id="threeDice" class="three-dice" aria-label="3D dice"></div>
+        <div class="dice-scene" id="diceScene">
+          <div id="dice" class="dice" title="Dice">
+            <div class="face face-1"><span></span></div>
+            <div class="face face-2"><span></span><span></span></div>
+            <div class="face face-3"><span></span><span></span><span></span></div>
+            <div class="face face-4"><span></span><span></span><span></span><span></span></div>
+            <div class="face face-5"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="face face-6"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <div class="dice-controls">
+          <button id="rollBtn" class="btn primary big" disabled>Roll dice</button>
+          <button id="soundToggleBtn" class="btn small" type="button" aria-label="Toggle sound">Sound on</button>
+          <div class="dice-result-row">
+            <span id="diceResult" class="dice-result">Roll to start</span>
+            <div id="finalDiceFace" class="final-dice-face" role="img" aria-label="Dice shows 1" title="Dice shows 1"></div>
+          </div>
         </div>
       </div>
-      <div>
-        <button id="rollBtn" class="btn primary big" disabled>Roll dice</button>
-        <p id="gameMessage" class="muted">Roll a 6 to leave home. Land on an opponent (except on a safe ★ square) to send them home. Exact roll to finish. First to bring all 4 tokens home wins.</p>
-      </div>
+      <p id="gameMessage" class="muted">Roll a 6 to leave home. Land on an opponent (except on a safe ★ square) to send them home. Exact roll to finish. First to bring all 4 tokens home wins.</p>
     </div>
 
+    <div class="ludo-board-frame">
+      <div class="ludo-board-wrap" id="ludoBoardWrap">
+        <div id="board" class="ludo-board" aria-label="Ludo board"></div>
+        <div class="centre-triangles" aria-hidden="true"><i class="tri tri-top"></i><i class="tri tri-right"></i><i class="tri tri-bottom"></i><i class="tri tri-left"></i></div>
+        <div id="tokensLayer" class="tokens-layer"></div>
+      </div>
+    </div>
+    <div id="winBanner" class="win-banner" hidden>Winner!</div>
+
     <div class="legend">
-      <span><i class="dot red"></i> Red — you in stake mode / Player 1 in practice</span>
-      <span><i class="dot yellow"></i> Yellow — Computer / Player 2 in practice</span>
+      <span><i class="dot yellow"></i> Yellow — you in stake mode / Player 1 in practice</span>
+      <span><i class="dot red"></i> Red — Computer / Player 2 in practice</span>
       <span>★ = safe square (cannot be captured)</span>
     </div>
   </section>
@@ -179,6 +190,8 @@
   <p>Prototype — virtual coins only. No real taka, no deposit, no cashout, no payment code. Accounts live in this browser only; a shared, cross-device login system needs a database later.</p>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
