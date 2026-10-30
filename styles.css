@@ -27,13 +27,13 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .userbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .balance{background:linear-gradient(180deg,#fcd34d,#f59e0b);color:#111827;font-weight:800;padding:8px 12px;border-radius:999px;
   box-shadow:0 4px 12px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.7)}
-.layout{max-width:1180px;margin:0 auto;padding:20px;display:grid;grid-template-columns:340px 1fr;gap:18px}
+.layout{max-width:1180px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr;gap:18px}
 .card{background:
     radial-gradient(600px 200px at 20% 0%,rgba(59,130,246,.12),transparent 60%),
     linear-gradient(180deg,var(--card),#162033);
   border:1px solid var(--line);border-radius:18px;padding:18px;
   box-shadow:0 18px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
-.game-card{grid-row:span 2}
+.game-card{grid-row:auto}
 #adminCard{grid-column:1 / -1}
 h2{margin:0 0 10px} h3{margin:18px 0 8px}
 .muted{color:var(--muted);font-size:14px;line-height:1.55}
@@ -58,7 +58,7 @@ input{padding:11px 12px;border-radius:10px;border:1px solid var(--line);backgrou
   box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 8px rgba(0,0,0,.35)}
 
 /* ---- Game-select home ---- */
-.game-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.game-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px}
 .game-tile{border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center;
   background:linear-gradient(180deg,#273449,#162033);
   box-shadow:0 14px 28px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.07)}
@@ -68,7 +68,6 @@ input{padding:11px 12px;border-radius:10px;border:1px solid var(--line);backgrou
   border-radius:12px;text-shadow:0 4px 10px rgba(0,0,0,.5)}
 .ludo-art{background:radial-gradient(circle at 30% 30%,#fecdd3,#e11d48 70%)}
 .chess-art{background:radial-gradient(circle at 30% 30%,#fef3c7,#92400e 75%);color:#111827}
-.guti-art{background:radial-gradient(circle at 30% 30%,#bfdbfe,#1e40af 75%);letter-spacing:6px}
 .rules-box{border:1px solid #92400e;border-radius:14px;padding:4px 16px 12px;margin:12px 0;
   background:linear-gradient(180deg,rgba(146,64,14,.22),rgba(30,41,59,.6))}
 .rules-box ol{padding-left:20px;line-height:1.6;color:var(--text);font-size:14px}
@@ -150,22 +149,6 @@ input{padding:11px 12px;border-radius:10px;border:1px solid var(--line);backgrou
 .chess-mini{display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;font-size:20px}
 .chess-mini.white{background:#fef3c7;color:#111827}.chess-mini.black{background:#111827;color:#fff}
 
-/* ---- Guti: felt board, bead points ---- */
-.guti-wrap{width:min(100%,520px)}
-.guti-board{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr);width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;
-  background:
-    repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 2px,transparent 2px 18px),
-    linear-gradient(145deg,#166534,#052e16);
-  box-shadow:inset 0 0 0 2px #1e293b,inset 0 0 40px rgba(0,0,0,.5)}
-.guti-point{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.12)}
-.guti-point::before{content:"";position:absolute;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35);box-shadow:0 0 0 1px rgba(0,0,0,.3)}
-.guti-bead{position:relative;z-index:1;width:72%;aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.9);
-  box-shadow:0 6px 12px rgba(0,0,0,.6),inset 0 -5px 7px rgba(0,0,0,.35),inset 0 3px 4px rgba(255,255,255,.7)}
-.guti-bead.red{background:radial-gradient(circle at 30% 28%,#fda4af,#e11d48 55%,#9f1239)}
-.guti-bead.blue{background:radial-gradient(circle at 30% 28%,#93c5fd,#2563eb 55%,#1e3a8a)}
-.guti-point.selected{outline:3px solid #22c55e;outline-offset:-3px;z-index:2}
-.guti-point.legal{outline:3px solid #facc15;outline-offset:-3px;z-index:2}
-.guti-point.legal::after{content:"";position:absolute;width:22%;height:22%;border-radius:50%;background:rgba(250,204,21,.9)}
 
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:12px}
 .dot{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;box-shadow:0 2px 5px rgba(0,0,0,.5)}
@@ -184,3 +167,38 @@ th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left}
   .btn.big{font-size:16px;padding:13px 16px}
   .chess-square{font-size:clamp(26px,9vw,44px)}
 }
+
+/* ---- Compact login/signup: small header dropdown, games stay in focus ---- */
+#authCard.auth-compact{position:absolute;right:16px;top:calc(100% + 10px);width:min(340px,92vw);max-height:min(78vh,640px);overflow:auto;z-index:30;
+  padding:14px;box-shadow:0 24px 50px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08)}
+#authCard.auth-compact h2{font-size:18px}
+#authCard.auth-compact .muted{font-size:13px}
+#authCard.auth-compact .history{max-height:160px;overflow:auto}
+
+/* ---- Ultra-realistic depth (CSS only) ---- */
+.board-wrap{transform:perspective(1400px) rotateX(1.5deg);transform-origin:top center}
+.wood-frame{box-shadow:0 30px 60px rgba(0,0,0,.65),inset 0 2px 0 rgba(255,255,255,.3),inset 0 -6px 14px rgba(0,0,0,.5),inset 0 0 0 3px rgba(0,0,0,.25)}
+.token{box-shadow:0 10px 18px rgba(0,0,0,.65),inset 0 -6px 8px rgba(0,0,0,.35),inset 0 4px 5px rgba(255,255,255,.8)}
+.token.moving{animation:tokenHop .18s ease}
+@keyframes tokenHop{50%{transform:translate(-50%,-70%) scale(1.15)}}
+.chess-square{transition:filter .15s ease}
+.chess-square:hover{filter:brightness(1.12)}
+.chess-square.just-moved{animation:pieceLand .35s ease}
+@keyframes pieceLand{0%{transform:scale(1.12)}100%{transform:scale(1)}}
+.chess-square .piece-white,.chess-square .piece-black{filter:drop-shadow(0 6px 4px rgba(0,0,0,.55))}
+.game-tile{transition:transform .15s ease,box-shadow .15s ease}
+.game-tile:hover{transform:translateY(-3px);box-shadow:0 20px 36px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+/* ---- Real 3D dice: tumble, then settle on the exact rolled face ---- */
+.dice-scene{perspective:800px}
+.dice{width:96px;height:96px}
+.dice .face{border-radius:18px;box-shadow:inset 0 3px 0 rgba(255,255,255,.95),inset 0 -10px 16px rgba(0,0,0,.22),inset 0 0 0 1px rgba(0,0,0,.15)}
+.dice.tumbling{animation:diceTumble .95s cubic-bezier(.3,.7,.3,1)}
+@keyframes diceTumble{
+  0%{transform:rotateX(0deg) rotateY(0deg) translateY(0) scale(1)}
+  25%{transform:rotateX(260deg) rotateY(180deg) translateY(-14px) scale(1.08)}
+  50%{transform:rotateX(540deg) rotateY(420deg) translateY(2px) scale(1)}
+  75%{transform:rotateX(720deg) rotateY(640deg) translateY(-8px) scale(1.05)}
+  100%{transform:rotateX(720deg) rotateY(720deg) translateY(0) scale(1)}
+}
+.dice-scene.dice-settle{animation:diceSettle .35s ease}
+@keyframes diceSettle{0%{transform:translateY(-8px) scale(1.06)}60%{transform:translateY(2px) scale(.98)}100%{transform:translateY(0) scale(1)}}
