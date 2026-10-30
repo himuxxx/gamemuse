@@ -68,10 +68,16 @@ function addHistory(user, entry) {
 function el(id) { return document.getElementById(id); }
 function showMsg(text, isError) {
   var m = el('authMessage'); m.hidden = false; m.textContent = text;
+  if (!getSession()) el('authCard').hidden = false; // compact panel: open it so the message is seen
   m.className = 'message' + (isError ? ' error' : '');
 }
 function updateUserbar() {
   var s = getSession(), info = el('userInfo'), badge = el('balanceBadge'), logout = el('logoutBtn');
+  var authToggle = el('authToggleBtn'), adminLink = el('adminLinkBtn');
+  if (authToggle) authToggle.hidden = !!s;
+  if (adminLink) adminLink.hidden = !(s && s.isAdmin);
+  // Compact login: hide the dropdown once logged in; it starts hidden in HTML.
+  if (s) el('authCard').hidden = true;
   if (s && s.isAdmin) {
     info.textContent = 'Logged in as ADMIN';
     badge.hidden = true; logout.hidden = false;
@@ -220,6 +226,26 @@ function updateStakeLabel() {
   el('stakeLabel').textContent = game && game.mode === 'stake' ? 'Stake match — 10 coins paid, winner gets 15, commission 5' : 'No active stake';
 }
 
+
+// ---------- Real 3D dice ----------
+// The cube is viewed front-on, so the FRONT face is the shown face.
+// Face geometry (from styles.css): 1=front, 6=back, 3=right, 4=left, 2=top, 5=bottom.
+// To bring a face to the front, rotate the cube by the inverse of that face's
+// own transform. Hence the exact, tested mapping below. Never show a random
+// face while the logic uses another number: animateDiceRoll() only calls
+// its callback AFTER the final show-N class is applied and settled.
+var DICE_SHOW_CLASS = { 1: 'show-1', 2: 'show-2', 3: 'show-3', 4: 'show-4', 5: 'show-5', 6: 'show-6' };
+function animateDiceRoll(value, done) {
+  var diceEl = el('dice'), scene = el('diceScene');
+  diceEl.className = 'dice tumbling';
+  if (scene) { scene.classList.remove('dice-settle'); void scene.offsetWidth; }
+  setTimeout(function () {
+    diceEl.className = 'dice ' + DICE_SHOW_CLASS[value];
+    if (scene) { scene.classList.add('dice-settle'); setTimeout(function () { scene.classList.remove('dice-settle'); }, 400); }
+    setTimeout(done, 380); // token movement starts only after the face settles
+  }, 950);
+}
+
 // ---------- Game flow ----------
 function startGame(mode) {
   if (mode === 'stake') {
@@ -245,13 +271,11 @@ function startGame(mode) {
 function rollDice() {
   if (!game || game.rolled) return;
   if (game.mode === 'stake' && game.turn === 1) return; // computer rolls itself
-  var diceEl = el('dice');
-  diceEl.classList.remove('rolling'); void diceEl.offsetWidth; diceEl.classList.add('rolling');
+  game.rolled = true; // lock out double rolls during the tumble
   var value = Math.floor(Math.random() * 6) + 1;
-  setTimeout(function () {
+  animateDiceRoll(value, function () {
     if (!game) return;
-    game.dice = value; game.rolled = true;
-    diceEl.className = 'dice show-' + value;
+    game.dice = value;
     var moves = movableTokens(game.turn, value);
     if (moves.length === 0) {
       setTurnLabel(PLAYER_NAMES[game.turn] + ' rolled ' + value + ' — no move possible. Turn passes.');
@@ -262,7 +286,7 @@ function rollDice() {
       renderTokens();
       if (game.mode === 'stake' && game.turn === 1) setTimeout(computerMove, 700);
     }
-  }, 450);
+  });
 }
 function afterTurnChange() {
   if (!game) return;
@@ -273,13 +297,11 @@ function afterTurnChange() {
 }
 function rollDiceComputer() {
   if (!game || game.rolled || game.turn !== 1) return;
-  var diceEl = el('dice');
-  diceEl.classList.remove('rolling'); void diceEl.offsetWidth; diceEl.classList.add('rolling');
+  game.rolled = true;
   var value = Math.floor(Math.random() * 6) + 1;
-  setTimeout(function () {
+  animateDiceRoll(value, function () {
     if (!game) return;
-    game.dice = value; game.rolled = true;
-    diceEl.className = 'dice show-' + value;
+    game.dice = value;
     var moves = movableTokens(1, value);
     if (moves.length === 0) {
       setTurnLabel('Computer rolled ' + value + ' — no move. Your turn.');
@@ -289,7 +311,7 @@ function rollDiceComputer() {
       renderTokens();
       setTimeout(computerMove, 700);
     }
-  }, 450);
+  });
 }
 function computerMove() {
   if (!game || !game.rolled || game.turn !== 1) return;
@@ -318,32 +340,43 @@ function computerMove() {
   doMove(1, best);
 }
 function doMove(player, tokenIdx) {
-  if (!game || !game.rolled || game.turn !== player) return;
+  if (!game || !game.rolled || game.turn !== player || game.animating) return;
   if (!canMove(player, tokenIdx, game.dice)) return;
   var p = game.players[player].tokens[tokenIdx];
   var next = p === -1 ? 0 : p + game.dice;
-  var captured = false;
+  var stepCount = p === -1 ? 1 : (next - p);
+  // Capture is decided from the FINAL square only, before animating.
+  var capturedIdx = [];
   if (next <= 50) {
     var abs = absoluteIndex(player, next);
     if (SAFE.indexOf(abs) < 0) {
       var opp = 1 - player;
       for (var i = 0; i < 4; i++) {
         var op = game.players[opp].tokens[i];
-        if (op >= 0 && op <= 50 && absoluteIndex(opp, op) === abs) {
-          game.players[opp].tokens[i] = -1; captured = true;
-        }
+        if (op >= 0 && op <= 50 && absoluteIndex(opp, op) === abs) capturedIdx.push(i);
       }
     }
   }
-  game.players[player].tokens[tokenIdx] = next;
-  renderTokens();
-  var finished = game.players[player].tokens.every(function (v) { return v === 56; });
-  if (finished) { finishGame(player); return; }
-  var extra = game.dice === 6 || captured;
-  setTurnLabel(PLAYER_NAMES[player] + ' moved token ' + (tokenIdx + 1) + (captured ? ' and captured an opponent!' : '') + (extra ? ' Extra roll.' : ''));
-  game.rolled = false;
-  if (!extra) game.turn = 1 - player;
-  afterTurnChange();
+  game.animating = true;
+  var step = 0;
+  (function stepFn() {
+    if (!game) return;
+    step++;
+    game.players[player].tokens[tokenIdx] = (p === -1) ? 0 : (p + step);
+    renderTokens();
+    if (step < stepCount) { setTimeout(stepFn, 170); return; }
+    capturedIdx.forEach(function (i) { game.players[1 - player].tokens[i] = -1; });
+    var captured = capturedIdx.length > 0;
+    renderTokens();
+    var finished = game.players[player].tokens.every(function (v) { return v === 56; });
+    game.animating = false;
+    if (finished) { finishGame(player); return; }
+    var extra = game.dice === 6 || captured;
+    setTurnLabel(PLAYER_NAMES[player] + ' moved token ' + (tokenIdx + 1) + (captured ? ' and captured an opponent!' : '') + (extra ? ' Extra roll.' : ''));
+    game.rolled = false;
+    if (!extra) game.turn = 1 - player;
+    afterTurnChange();
+  })();
 }
 function finishGame(winner) {
   var mode = game.mode;
@@ -409,6 +442,8 @@ document.addEventListener('DOMContentLoaded', function () {
     showMsg('Account created! You start with 100 virtual coins.'); updateUserbar();
   };
   el('logoutBtn').onclick = function () { saveSession(null); showMsg('Logged out. Your account is still saved in this browser.'); updateUserbar(); };
+  if (el('authToggleBtn')) el('authToggleBtn').onclick = function () { el('authCard').hidden = !el('authCard').hidden; };
+  if (el('adminLinkBtn')) el('adminLinkBtn').onclick = function () { document.getElementById('adminCard').scrollIntoView({ behavior: 'smooth' }); };
   el('stakeBtn').onclick = function () { startGame('stake'); };
   el('practiceBtn').onclick = function () { startGame('practice'); };
   el('resetBtn').onclick = function () {
@@ -425,12 +460,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
 /* =====================================================================
    Added in the ultra upgrade: game-select navigation, Daba (chess) and
-   Bead 16-16 Guti. The original Ludo, login, admin and coin code above
+   Daba (chess). The original Ludo, login, admin and coin code above
    is untouched. All stake matches share: entry 10, winner 15,
    commission 5, blocked below 10, no refund on mid-match restart.
    ===================================================================== */
 
-// ---------- Shared stake helpers (Chess / Guti) ----------
+// ---------- Shared stake helper (Daba) ----------
 function stakeStartForGame(label) {
   var user = currentUser();
   if (!user) { showMsg('Log in first to play a stake match.', true); return false; }
@@ -462,7 +497,7 @@ function recordPracticeGame(label, winnerText) {
 
 // ---------- Navigation ----------
 function showView(id) {
-  ['homeView', 'ludoView', 'chessView', 'gutiView'].forEach(function (v) { el(v).hidden = (v !== id); });
+  ['homeView', 'ludoView', 'chessView'].forEach(function (v) { el(v).hidden = (v !== id); });
   window.scrollTo(0, 0);
 }
 
@@ -643,6 +678,7 @@ function chessRender() {
       if (chessState && chessState.selected && chessState.selected[0] === r && chessState.selected[1] === c) d.className += ' selected';
       if (legalByTarget[r + ',' + c]) d.className += board[r][c] ? ' legal-capture' : ' legal';
       if (checkKing && checkKing[0] === r && checkKing[1] === c) d.className += ' in-check';
+      if (chessState && chessState.lastMoveTo && chessState.lastMoveTo[0] === r && chessState.lastMoveTo[1] === c) d.className += ' just-moved';
       var p = board[r][c];
       if (p) {
         var s = document.createElement('span');
@@ -699,6 +735,7 @@ function chessDoMove(move) {
     st.enPassant = [(move.from[0] + move.to[0]) / 2, move.from[1]];
   else st.enPassant = null;
   st.selected = null; st.legal = [];
+  st.lastMoveTo = move.to;
   st.turn = mover === 'w' ? 'b' : 'w';
   chessAfterMove(mover);
 }
@@ -795,213 +832,14 @@ function chessReset() {
   chessRender();
 }
 
-// =====================================================================
-// BEAD 16-16 GUTI (simplified traditional-style version — see README)
-// 7x7 points. Placement: 16 beads each, alternating. Movement: one step
-// to a neighbouring empty point (8 directions). Capture: one jump over a
-// neighbouring opponent bead to the empty point behind it, per turn.
-// =====================================================================
-var GUTI_DIRS = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
-var gutiState = null;
-function gutiCount(color) {
-  var n = 0;
-  if (!gutiState) return 0;
-  for (var r = 0; r < 7; r++) for (var c = 0; c < 7; c++) if (gutiState.grid[r][c] === color) n++;
-  return n;
-}
-function gutiInBounds(r, c) { return r >= 0 && r < 7 && c >= 0 && c < 7; }
-function gutiMovesFrom(grid, r, c) {
-  var color = grid[r][c]; if (!color) return [];
-  var opp = color === 'R' ? 'B' : 'R', out = [];
-  GUTI_DIRS.forEach(function (d) {
-    var r1 = r + d[0], c1 = c + d[1];
-    if (!gutiInBounds(r1, c1)) return;
-    if (!grid[r1][c1]) out.push({ to: [r1, c1], capture: null });
-    else if (grid[r1][c1] === opp) {
-      var r2 = r + 2 * d[0], c2 = c + 2 * d[1];
-      if (gutiInBounds(r2, c2) && !grid[r2][c2]) out.push({ to: [r2, c2], capture: [r1, c1] });
-    }
-  });
-  return out;
-}
-function gutiHasMove(grid, color) {
-  for (var r = 0; r < 7; r++) for (var c = 0; c < 7; c++)
-    if (grid[r][c] === color && gutiMovesFrom(grid, r, c).length) return true;
-  return false;
-}
-function gutiRender() {
-  var wrap = el('gutiBoard'); wrap.innerHTML = '';
-  var grid = gutiState ? gutiState.grid : null;
-  var legalMap = {};
-  if (gutiState && gutiState.selected) {
-    gutiState.legal.forEach(function (m) { legalMap[m.to[0] + ',' + m.to[1]] = m; });
-  }
-  for (var r = 0; r < 7; r++) for (var c = 0; c < 7; c++) {
-    (function (r, c) {
-      var d = document.createElement('div');
-      d.className = 'guti-point';
-      if (gutiState && gutiState.selected && gutiState.selected[0] === r && gutiState.selected[1] === c) d.className += ' selected';
-      if (legalMap[r + ',' + c]) d.className += ' legal';
-      if (grid && grid[r][c]) {
-        var b = document.createElement('div');
-        b.className = 'guti-bead ' + (grid[r][c] === 'R' ? 'red' : 'blue');
-        d.appendChild(b);
-      }
-      d.onclick = function () { gutiClick(r, c); };
-      wrap.appendChild(d);
-    })(r, c);
-  }
-  if (gutiState) {
-    el('gutiCaptured').textContent = 'Red: ' + gutiCount('R') + ' beads on board · Blue: ' + gutiCount('B') +
-      ' beads on board · Captured — Red took ' + gutiState.capturedByR + ', Blue took ' + gutiState.capturedByB;
-    el('gutiPhase').textContent = 'Phase: ' + (gutiState.phase === 'place'
-      ? 'Placement — Red placed ' + gutiState.placed.R + '/16, Blue placed ' + gutiState.placed.B + '/16'
-      : 'Movement & capture');
-  }
-}
-function gutiHumanTurn() {
-  if (!gutiState || gutiState.over) return false;
-  if (gutiState.mode === 'practice') return true;
-  return gutiState.turn === 'R';
-}
-function gutiClick(r, c) {
-  if (!gutiState || gutiState.over || !gutiHumanTurn()) return;
-  var st = gutiState;
-  if (st.phase === 'place') {
-    if (st.grid[r][c]) return;
-    gutiPlace(st.turn, r, c);
-    return;
-  }
-  if (st.selected) {
-    var found = null;
-    st.legal.forEach(function (m) {
-      if (m.to[0] === r && m.to[1] === c) found = m;
-    });
-    if (found) { gutiDoMove(found); return; }
-  }
-  if (st.grid[r][c] === st.turn) {
-    st.selected = [r, c];
-    st.legal = gutiMovesFrom(st.grid, r, c);
-  } else { st.selected = null; st.legal = []; }
-  gutiRender();
-}
-function gutiPlace(color, r, c) {
-  var st = gutiState; if (!st || st.grid[r][c]) return;
-  st.grid[r][c] = color; st.placed[color]++;
-  if (st.placed.R >= 16 && st.placed.B >= 16) {
-    st.phase = 'move'; st.turn = 'R';
-    el('gutiStatus').textContent = 'All beads placed! Movement phase: click your bead, then a highlighted point. Jump over an opponent bead to capture it.';
-  } else {
-    st.turn = color === 'R' ? 'B' : 'R';
-  }
-  gutiAfterPlacementOrMove();
-}
-function gutiDoMove(move) {
-  var st = gutiState; if (!st || !st.selected) return;
-  var mover = st.turn, from = st.selected;
-  st.grid[from[0]][from[1]] = null;
-  st.grid[move.to[0]][move.to[1]] = mover;
-  if (move.capture) {
-    st.grid[move.capture[0]][move.capture[1]] = null;
-    if (mover === 'R') st.capturedByR++; else st.capturedByB++;
-  }
-  st.selected = null; st.legal = [];
-  var opp = mover === 'R' ? 'B' : 'R';
-  if (gutiCount(opp) === 0) { gutiFinish(mover); return; }
-  st.turn = opp;
-  gutiAfterPlacementOrMove();
-}
-function gutiAfterPlacementOrMove() {
-  var st = gutiState; if (!st) return;
-  gutiRender();
-  if (st.over) return;
-  var turnName = st.mode === 'stake' ? (st.turn === 'R' ? 'Your turn (Red)' : 'Computer (Blue) thinking…')
-    : (st.turn === 'R' ? 'Red to move' : 'Blue to move');
-  if (st.phase === 'move' && !gutiHasMove(st.grid, st.turn)) {
-    gutiFinish(st.turn === 'R' ? 'B' : 'R');
-    return;
-  }
-  el('gutiTurn').textContent = (st.phase === 'place' ? 'Placement — ' : 'Movement — ') + turnName + '.';
-  if (st.mode === 'stake' && st.turn === 'B' && !st.over) setTimeout(gutiComputerMove, 600);
-}
-function gutiFinish(winnerColor) {
-  var st = gutiState; if (!st) return;
-  st.over = true; gutiRender();
-  var winnerText = st.mode === 'stake' ? (winnerColor === 'R' ? 'You (Red)' : 'Computer (Blue)')
-    : (winnerColor === 'R' ? 'Red' : 'Blue');
-  el('gutiTurn').textContent = '🏆 ' + winnerText + ' won!';
-  el('gutiStatus').textContent = winnerText + ' won the Guti match. Start a new match to play again.';
-  if (st.mode === 'stake' && st.stakeActive) {
-    settleStakeGame('Bead 16-16 Guti', winnerColor === 'R');
-    st.stakeActive = false;
-  } else if (st.mode === 'practice') {
-    recordPracticeGame('Bead 16-16 Guti', winnerText);
-  }
-  el('gutiStakeLabel').textContent = 'Match finished — start a new match to play again.';
-}
-function gutiComputerMove() {
-  var st = gutiState; if (!st || st.over || st.turn !== 'B') return;
-  if (st.phase === 'place') {
-    var empties = [];
-    for (var r = 0; r < 7; r++) for (var c = 0; c < 7; c++) if (!st.grid[r][c]) empties.push([r, c]);
-    if (!empties.length) return;
-    var pick = empties[Math.floor(Math.random() * empties.length)];
-    gutiPlace('B', pick[0], pick[1]);
-    return;
-  }
-  // Prefer a capture, otherwise a random legal move.
-  var options = [];
-  for (var rr = 0; rr < 7; rr++) for (var cc = 0; cc < 7; cc++) {
-    if (st.grid[rr][cc] === 'B') {
-      gutiMovesFrom(st.grid, rr, cc).forEach(function (m) { options.push({ from: [rr, cc], move: m }); });
-    }
-  }
-  if (!options.length) return;
-  var captures = options.filter(function (o) { return o.move.capture; });
-  var chosen = (captures.length ? captures : options)[Math.floor(Math.random() * (captures.length ? captures.length : options.length))];
-  st.selected = chosen.from; st.legal = [chosen.move];
-  gutiDoMove(chosen.move);
-}
-function gutiStart(mode) {
-  var stakeActive = false;
-  if (mode === 'stake') {
-    if (!stakeStartForGame('Bead 16-16 Guti')) return;
-    stakeActive = true;
-  }
-  gutiState = {
-    grid: (function () { var g = []; for (var i = 0; i < 7; i++) g.push([null, null, null, null, null, null, null]); return g; })(),
-    phase: 'place', placed: { R: 0, B: 0 }, turn: 'R', mode: mode, stakeActive: stakeActive,
-    selected: null, legal: [], over: false, capturedByR: 0, capturedByB: 0
-  };
-  el('gutiStakeLabel').textContent = mode === 'stake' ? 'Stake match — 10 coins paid, winner gets 15, commission 5' : 'No active stake';
-  el('gutiTurn').textContent = mode === 'stake' ? 'Stake match started — placement, your turn (Red).' : 'Practice started — placement, Red to place.';
-  el('gutiStatus').textContent = 'Placement: click an empty point to place a bead. Each side places 16 beads.';
-  gutiRender();
-}
-function gutiReset() {
-  if (gutiState && gutiState.stakeActive)
-    el('gutiStatus').textContent = 'Board restarted. Note: a stake entry already paid is not refunded by restarting.';
-  gutiState = null;
-  el('gutiStakeLabel').textContent = 'No active stake';
-  el('gutiTurn').textContent = 'Board cleared. Start a new match.';
-  el('gutiPhase').textContent = 'Phase: —';
-  gutiRender();
-}
-
 // ---------- Wire up navigation + new games ----------
 document.addEventListener('DOMContentLoaded', function () {
   el('playLudoBtn').onclick = function () { showView('ludoView'); };
   el('playChessBtn').onclick = function () { showView('chessView'); };
-  el('playGutiBtn').onclick = function () { showView('gutiView'); };
   el('backFromLudo').onclick = function () { showView('homeView'); };
   el('backFromChess').onclick = function () { showView('homeView'); };
-  el('backFromGuti').onclick = function () { showView('homeView'); };
   el('chessStakeBtn').onclick = function () { chessStart('stake'); };
   el('chessPracticeBtn').onclick = function () { chessStart('practice'); };
   el('chessResetBtn').onclick = chessReset;
-  el('gutiStakeBtn').onclick = function () { gutiStart('stake'); };
-  el('gutiPracticeBtn').onclick = function () { gutiStart('practice'); };
-  el('gutiResetBtn').onclick = gutiReset;
   chessRender();
-  gutiRender();
 });
