@@ -11,7 +11,7 @@
    ===================================================================== */
 
 // ---------- Board geometry ----------
-// Main 52-square loop, clockwise, starting at the Red start square (6,1).
+// Main 52-square loop, clockwise, starting at the Yellow start square (6,1).
 var PATH = [
   [6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],
   [1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],
@@ -20,17 +20,17 @@ var PATH = [
 ];
 // Absolute indices that are safe (start squares + classic star squares).
 var SAFE = [0, 8, 13, 21, 26, 34, 39, 47];
-var START = [0, 26]; // Red starts at PATH[0], Yellow at PATH[26]
+var START = [0, 26]; // Yellow starts at PATH[0], Red at PATH[26]
 // Home columns: 5 coloured squares, then the centre (finished).
 var HOME = [
   [[7,1],[7,2],[7,3],[7,4],[7,5]],
   [[7,13],[7,12],[7,11],[7,10],[7,9]]
 ];
 var YARD = [
-  [[1,1],[1,4],[4,1],[4,4]],       // Red yard (top-left)
-  [[10,10],[10,13],[13,10],[13,13]] // Yellow yard (bottom-right)
+  [[1,1],[1,4],[4,1],[4,4]],       // Yellow yard (top-left)
+  [[10,10],[10,13],[13,10],[13,13]] // Red yard (bottom-right)
 ];
-var PLAYER_NAMES = ['Red', 'Yellow'];
+var PLAYER_NAMES = ['Yellow', 'Red'];
 var CENTRE = [7, 7];
 
 // ---------- Storage helpers ----------
@@ -134,19 +134,42 @@ function adjustCoins(username, isAdd) {
 
 // ---------- Board rendering ----------
 function cellClass(r, c) {
-  if (r < 6 && c < 6) return 'cell red';
-  if (r > 8 && c > 8) return 'cell yellow';
-  if (r >= 6 && r <= 8 && c >= 6 && c <= 8) return 'cell center';
-  if (r === 7 && c >= 1 && c <= 5) return 'cell red-home';
-  if (r === 7 && c >= 9 && c <= 13) return 'cell yellow-home';
+  // Four 6x6 homes: Yellow TL, Green TR, Blue BL, Red BR.
+  if (r < 6 && c < 6) return (r >= 1 && r <= 4 && c >= 1 && c <= 4) ? 'cell white-home' : 'cell home-yellow';
+  if (r < 6 && c > 8) return (r >= 1 && r <= 4 && c >= 10 && c <= 13) ? 'cell white-home' : 'cell home-green';
+  if (r > 8 && c < 6) return (r >= 10 && r <= 13 && c >= 1 && c <= 4) ? 'cell white-home' : 'cell home-blue';
+  if (r > 8 && c > 8) return (r >= 10 && r <= 13 && c >= 10 && c <= 13) ? 'cell white-home' : 'cell home-red';
+  if (r >= 6 && r <= 8 && c >= 6 && c <= 8) return 'cell centre';
+  // Home columns (middle line of each arm, towards the centre).
+  if (r === 7 && c >= 1 && c <= 5) return 'cell path-yellow';
+  if (r === 7 && c >= 9 && c <= 13) return 'cell path-red';
+  if (c === 7 && r >= 1 && r <= 5) return 'cell path-green';
+  if (c === 7 && r >= 9 && r <= 13) return 'cell path-blue';
+  // Start squares (coloured, with arrows in renderBoard).
+  if (r === 6 && c === 1) return 'cell path-yellow start-arrow';
+  if (r === 1 && c === 6) return 'cell path-green start-arrow';
+  if (r === 8 && c === 13) return 'cell path-red start-arrow';
+  if (r === 13 && c === 8) return 'cell path-blue start-arrow';
   for (var i = 0; i < PATH.length; i++) {
-    if (PATH[i][0] === r && PATH[i][1] === c) {
-      if (r === 6 && c === 1) return 'cell red';
-      if (r === 8 && c === 13) return 'cell yellow';
-      return 'cell' + (SAFE.indexOf(i) >= 0 ? ' safe' : '');
-    }
+    if (PATH[i][0] === r && PATH[i][1] === c) return 'cell' + (SAFE.indexOf(i) >= 0 ? ' safe' : '');
   }
   return 'cell';
+}
+function cellBackground(r, c) {
+  if (r < 6 && c < 6) return (r >= 1 && r <= 4 && c >= 1 && c <= 4) ? '#ffffff' : '#facc15';
+  if (r < 6 && c > 8) return (r >= 1 && r <= 4 && c >= 10 && c <= 13) ? '#ffffff' : '#22c55e';
+  if (r > 8 && c < 6) return (r >= 10 && r <= 13 && c >= 1 && c <= 4) ? '#ffffff' : '#2563eb';
+  if (r > 8 && c > 8) return (r >= 10 && r <= 13 && c >= 10 && c <= 13) ? '#ffffff' : '#ef4444';
+  if (r >= 6 && r <= 8 && c >= 6 && c <= 8) return '#ffffff';
+  if (r === 7 && c >= 1 && c <= 5) return '#facc15';
+  if (r === 7 && c >= 9 && c <= 13) return '#ef4444';
+  if (c === 7 && r >= 1 && r <= 5) return '#22c55e';
+  if (c === 7 && r >= 9 && r <= 13) return '#2563eb';
+  if (r === 6 && c === 1) return '#facc15';
+  if (r === 1 && c === 6) return '#22c55e';
+  if (r === 8 && c === 13) return '#ef4444';
+  if (r === 13 && c === 8) return '#2563eb';
+  return '#ffffff';
 }
 function renderBoard() {
   var board = el('board'); board.innerHTML = '';
@@ -154,10 +177,13 @@ function renderBoard() {
     for (var c = 0; c < 15; c++) {
       var d = document.createElement('div');
       d.className = cellClass(r, c);
+      d.style.background = cellBackground(r, c);
+      d.style.border = '1px solid #111827';
       var idx = -1;
       for (var i = 0; i < PATH.length; i++) if (PATH[i][0] === r && PATH[i][1] === c) idx = i;
-      if (idx >= 0 && SAFE.indexOf(idx) >= 0) d.textContent = '★';
-      if (r === 7 && c === 7) d.textContent = '🏠';
+      var startArrows = {'6,1': '→', '1,6': '↑', '8,13': '←', '13,8': '↓'};
+      if (startArrows[r + ',' + c]) d.textContent = startArrows[r + ',' + c];
+      else if (idx >= 0 && SAFE.indexOf(idx) >= 0) { d.textContent = '★'; d.style.color = '#0f766e'; }
       board.appendChild(d);
     }
   }
@@ -210,7 +236,7 @@ function renderTokens() {
       // Movable highlight is only for a human turn (computer moves itself).
       var humanTurn = game.mode === 'practice' || game.turn === 0;
       var movable = humanTurn && game.rolled && game.turn === item.pl && canMove(item.pl, item.t, game.dice);
-      d.className = 'token ' + (item.pl === 0 ? 'red' : 'yellow') + (movable ? ' movable' : '') +
+      d.className = 'token ' + (item.pl === 0 ? 'yellow' : 'red') + (movable ? ' movable' : '') +
         (game.players[item.pl].tokens[item.t] === 56 ? ' finished' : '');
       d.style.left = ((coord[1] + 0.5) / 15 * 100 + offset) + '%';
       d.style.top = ((coord[0] + 0.5) / 15 * 100 + offset) + '%';
@@ -227,6 +253,31 @@ function updateStakeLabel() {
 }
 
 
+
+// ---------- Real game feel: WebAudio sounds (no files) + vibration ----------
+var soundOn = true, audioCtx = null;
+function getAudio() {
+  if (audioCtx) return audioCtx;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
+  return audioCtx;
+}
+function playTone(freq, dur, type, vol) {
+  if (!soundOn) return;
+  var ctx = getAudio(); if (!ctx) return;
+  try {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + dur);
+  } catch (e) {}
+}
+function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+function playDiceRattle() { if (!soundOn) return; [0, 90, 180].forEach(function (d, i) { setTimeout(function () { playTone(180 + i * 60, 0.08, 'square', 0.05); }, d); }); vibrate(30); }
+function playStep() { playTone(520, 0.06, 'triangle', 0.08); }
+function playCapture() { playTone(700, 0.12, 'sawtooth', 0.08); setTimeout(function () { playTone(300, 0.18, 'sawtooth', 0.08); }, 80); vibrate(60); }
+function playWin() { [523, 659, 784, 1047].forEach(function (f, i) { setTimeout(function () { playTone(f, 0.25, 'triangle', 0.12); }, i * 130); }); vibrate([80, 60, 80, 60, 120]); }
+
 // ---------- Real 3D dice ----------
 // The cube is viewed front-on, so the FRONT face is the shown face.
 // Face geometry (from styles.css): 1=front, 6=back, 3=right, 4=left, 2=top, 5=bottom.
@@ -235,19 +286,111 @@ function updateStakeLabel() {
 // face while the logic uses another number: animateDiceRoll() only calls
 // its callback AFTER the final show-N class is applied and settled.
 var DICE_SHOW_CLASS = { 1: 'show-1', 2: 'show-2', 3: 'show-3', 4: 'show-4', 5: 'show-5', 6: 'show-6' };
-function animateDiceRoll(value, done) {
+// Always-visible settled face: pip positions on a 3x3 grid (indices 0-8, row-major).
+// Counts match the number exactly: 1->1 pip, 2->2, 3->3, 4->4, 5->5, 6->6.
+var DICE_FINAL_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+function renderFinalDiceFace(v) {
+  var face = el('finalDiceFace'); if (!face || !DICE_FINAL_PIPS[v]) return;
+  face.classList.remove('rolling');
+  face.setAttribute('aria-label', 'Dice shows ' + v);
+  face.title = 'Dice shows ' + v;
+  face.innerHTML = '';
+  for (var i = 0; i < 9; i++) {
+    var cell = document.createElement('i');
+    if (DICE_FINAL_PIPS[v].indexOf(i) >= 0) cell.className = 'pip';
+    face.appendChild(cell);
+  }
+}
+function setDiceResult(v) {
+  var dr = el('diceResult'); if (dr) dr.textContent = 'Rolled: ' + v;
+  // Called from EVERY settle path (Three.js GSAP, Three.js no-GSAP, CSS fallback),
+  // so this face updates in both paths and then stays visible until the next settle.
+  renderFinalDiceFace(v);
+}
+// ---------- Three.js dice (CDN) with CSS 3D fallback ----------
+// Face numbers, Three.js BoxGeometry order [+x,-x,+y,-y,+z,-z]:
+// right=3, left=4, top=2, bottom=5, front=1, back=6 (opposites 1-6, 2-5, 3-4).
+// To bring a face to the front (+z), rotate by the inverse of its own axis:
+// 1:(0,0) 6:(0,PI) 3:(0,-PI/2) 4:(0,PI/2) 2:(PI/2,0) 5:(-PI/2,0)  [x,y]
+var THREE_DICE_BASE = { 1: [0, 0], 2: [Math.PI / 2, 0], 3: [0, -Math.PI / 2], 4: [0, Math.PI / 2], 5: [-Math.PI / 2, 0], 6: [0, Math.PI] };
+var threeDice = null; // { mesh, renderer, scene, camera }
+function threeDiceTexture(n) {
+  var cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+  var ctx = cv.getContext('2d');
+  var g = ctx.createLinearGradient(0, 0, 256, 256); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#f8fafc');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 10; ctx.strokeRect(6, 6, 244, 244);
+  var pos = { 1: [[128, 128]], 2: [[64, 64], [192, 192]], 3: [[64, 64], [128, 128], [192, 192]],
+    4: [[64, 64], [192, 64], [64, 192], [192, 192]],
+    5: [[64, 64], [192, 64], [128, 128], [64, 192], [192, 192]],
+    6: [[64, 64], [192, 64], [64, 128], [192, 128], [64, 192], [192, 192]] };
+  ctx.fillStyle = '#000000';
+  pos[n].forEach(function (p) { ctx.beginPath(); ctx.arc(p[0], p[1], 26, 0, Math.PI * 2); ctx.fill(); });
+  return new THREE.CanvasTexture(cv);
+}
+function initThreeDice() {
+  try {
+    if (!window.THREE) throw new Error('Three.js not loaded');
+    var holder = el('threeDice'); if (!holder) throw new Error('threeDice missing');
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100); camera.position.set(0, 0, 3.4);
+    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(140, 140);
+    holder.appendChild(renderer.domElement);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    var dir = new THREE.DirectionalLight(0xffffff, 1.1); dir.position.set(3, 5, 4); scene.add(dir);
+    var mats = [3, 4, 2, 5, 1, 6].map(function (n) {
+      return new THREE.MeshStandardMaterial({ map: threeDiceTexture(n), roughness: 0.35, metalness: 0.05 });
+    });
+    var mesh = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.35, 1.35), mats);
+    scene.add(mesh);
+    threeDice = { mesh: mesh, renderer: renderer, scene: scene, camera: camera };
+    renderer.render(scene, camera);
+    var tray = el('diceTray'); if (tray) tray.classList.remove('three-off');
+    return true;
+  } catch (e) {
+    var tray2 = el('diceTray'); if (tray2) tray2.classList.add('three-off');
+    return false;
+  }
+}
+function threeAnimateDiceRoll(value, done) {
+  var d = threeDice; if (!d) { cssAnimateDiceRoll(value, done); return; }
+  var base = THREE_DICE_BASE[value];
+  function settleTarget(baseVal, cur) { var t = baseVal; while (t < cur + Math.PI * 2) t += Math.PI * 2; return t; }
+  var tx = settleTarget(base[0], d.mesh.rotation.x);
+  var ty = settleTarget(base[1], d.mesh.rotation.y);
+  var tz = settleTarget(0, d.mesh.rotation.z);
+  if (window.gsap) {
+    gsap.to(d.mesh.rotation, { duration: 1.0, ease: 'power2.out', x: tx, y: ty, z: tz,
+      onUpdate: function () { d.renderer.render(d.scene, d.camera); },
+      onComplete: function () { setDiceResult(value); done(); } });
+  } else {
+    d.mesh.rotation.set(base[0], base[1], 0); d.renderer.render(d.scene, d.camera); setDiceResult(value); done();
+  }
+}
+function cssAnimateDiceRoll(value, done) {
   var diceEl = el('dice'), scene = el('diceScene');
   diceEl.className = 'dice tumbling';
   if (scene) { scene.classList.remove('dice-settle'); void scene.offsetWidth; }
   setTimeout(function () {
     diceEl.className = 'dice ' + DICE_SHOW_CLASS[value];
     if (scene) { scene.classList.add('dice-settle'); setTimeout(function () { scene.classList.remove('dice-settle'); }, 400); }
-    setTimeout(done, 380); // token movement starts only after the face settles
+    setDiceResult(value);
+    setTimeout(done, 380);
   }, 950);
+}
+function animateDiceRoll(value, done) {
+  playDiceRattle();
+  // Keep the previous final face visible (dimmed) during the tumble; it is
+  // replaced with the new number only when the roll settles, via setDiceResult.
+  var ff = el('finalDiceFace'); if (ff) ff.classList.add('rolling');
+  if (threeDice) threeAnimateDiceRoll(value, done); else cssAnimateDiceRoll(value, done);
 }
 
 // ---------- Game flow ----------
 function startGame(mode) {
+  var wb0 = el('winBanner'); if (wb0) wb0.hidden = true;
   if (mode === 'stake') {
     var user = currentUser();
     if (!user) { showMsg('Log in first to play a stake match.', true); return; }
@@ -264,7 +407,7 @@ function startGame(mode) {
   };
   el('rollBtn').disabled = false;
   renderTokens(); updateStakeLabel(); updateUserbar();
-  setTurnLabel(mode === 'stake' ? 'Stake match started — Red (you) to roll.' : 'Practice started — Red (Player 1) to roll.');
+  setTurnLabel(mode === 'stake' ? 'Stake match started — Yellow (you) to roll.' : 'Practice started — Yellow (Player 1) to roll.');
   el('gameMessage').textContent = 'Roll the dice. A 6 lets a token leave home, and also gives an extra roll.';
   if (mode === 'stake') showMsg('Stake match started: 10 coins deducted. Winner gets 15 coins, 5 coins go to system commission.', false);
 }
@@ -363,9 +506,11 @@ function doMove(player, tokenIdx) {
     if (!game) return;
     step++;
     game.players[player].tokens[tokenIdx] = (p === -1) ? 0 : (p + step);
+    playStep();
     renderTokens();
     if (step < stepCount) { setTimeout(stepFn, 170); return; }
     capturedIdx.forEach(function (i) { game.players[1 - player].tokens[i] = -1; });
+    if (capturedIdx.length) playCapture();
     var captured = capturedIdx.length > 0;
     renderTokens();
     var finished = game.players[player].tokens.every(function (v) { return v === 56; });
@@ -380,8 +525,11 @@ function doMove(player, tokenIdx) {
 }
 function finishGame(winner) {
   var mode = game.mode;
-  var winnerName = mode === 'stake' ? (winner === 0 ? 'You (Red)' : 'Computer (Yellow)') : PLAYER_NAMES[winner];
+  var winnerName = mode === 'stake' ? (winner === 0 ? 'You (Yellow)' : 'Computer (Red)') : PLAYER_NAMES[winner];
   setTurnLabel('🏆 ' + winnerName + ' won!');
+  playWin();
+  var wb = el('winBanner'); if (wb) { wb.hidden = false; wb.textContent = '🏆 ' + winnerName + ' won!'; }
+  var bw = el('ludoBoardWrap'); if (bw) { bw.classList.add('win-celebrate'); setTimeout(function () { bw.classList.remove('win-celebrate'); }, 2600); }
   el('gameMessage').textContent = winnerName + ' brought all 4 tokens home first.';
   el('rollBtn').disabled = true;
   renderTokens();
@@ -410,6 +558,7 @@ function finishGame(winner) {
 // ---------- Auth wiring ----------
 document.addEventListener('DOMContentLoaded', function () {
   renderBoard();
+  initThreeDice();
   document.querySelectorAll('.tab').forEach(function (tab) {
     tab.onclick = function () {
       document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
@@ -454,7 +603,9 @@ document.addEventListener('DOMContentLoaded', function () {
     setTurnLabel('Board cleared. Start a new match.');
   };
   el('rollBtn').onclick = rollDice;
+  var st = el('soundToggleBtn'); if (st) st.onclick = function () { soundOn = !soundOn; st.textContent = soundOn ? 'Sound on' : 'Sound off'; };
   el('dice').className = 'dice show-1';
+  renderFinalDiceFace(1);
   updateUserbar();
 });
 
