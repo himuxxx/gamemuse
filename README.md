@@ -1,4 +1,4 @@
-# Gaming Arena — Ludo, Daba (Chess) & Bead 16-16 Guti — Virtual Coins Only
+# Gaming Arena — Ludo & Daba (Chess) — Virtual Coins Only
 
 A static, no-build-step gaming site. No backend, no database, no payment
 code, no real money, no cashout. Everything runs in the visitor's browser.
@@ -6,20 +6,26 @@ Open the site, choose a game from the home screen, and play.
 
 ## What is inside
 
-- **Login / Signup** — saved in the browser's `localStorage`.
+- **Compact login / signup** — a small dropdown card in the header, not a large page section. Saved in the browser's `localStorage`.
   A user can log out and log back in later on the same device/browser and
   keep their balance and match history. Nothing is deleted by logging out.
   New users start with **100 virtual coins**.
 - **Admin panel** — visible only after admin login (see below).
   Admin can see all local users, their balances, match history,
-  the total virtual commission earned across **all games**, and add/remove
+  the total virtual commission earned across **Ludo and Daba**, and add/remove
   coins for a user.
-- **Game-select home screen** — Ludo, Daba (Chess), and Bead 16-16 Guti.
+- **Game-select home screen** — Ludo and Daba (Chess) only for now. Bead 16-16 Guti is coming later.
 - **Ultra-realistic, CSS-only UI** — wood-grain board frames, felt/leather
-  textures, 3D tokens and pieces, and a 3D animated dice for Ludo, all made
-  with layered gradients, highlights and shadows. No external images, so
-  the site still works offline and on Vercel. Responsive on mobile and PC,
-  with large controls on mobile.
+  textures, 3D tokens and pieces, board depth and soft shadows, and a real
+  3D dice for Ludo, all made with layered gradients, highlights and shadows.
+  No external images, so the site still works offline and on Vercel.
+  Responsive on mobile and PC, with large controls on mobile.
+- **Real 3D dice (Ludo)** — a true CSS 3D cube with correct pips for 1–6.
+  On a roll it tumbles realistically, then settles so the face on top/front
+  is exactly the number the game rolled (for example, a roll of 4 ends
+  showing 4). The game logic number and the displayed face always match.
+  Token movement starts only after the dice settles, and moves step by
+  step, one square at a time.
 
 ## The games
 
@@ -40,30 +46,6 @@ Full playable chess:
 - Computer AI: a simple opponent that prefers captures and giving check,
   otherwise picks a legal move at random.
 
-### Bead 16-16 Guti — Red vs Blue, 16 beads each
-A traditional-style bead capture game, in simple words:
-1. **Placement:** take turns putting one bead on any empty point of the
-   7×7 board. Each side places **16 beads**. Red places first.
-2. **Movement:** after all beads are placed, take turns moving one bead
-   one step to a neighbouring empty point — sideways, up/down, or diagonally.
-3. **Capture by jumping:** jump straight over a neighbouring opponent bead
-   (sideways, up/down, or diagonally) and land on the empty point just
-   behind it. That opponent bead is removed. One jump per turn.
-4. **Win:** capture all of your opponent's beads, or leave them with no
-   legal move.
-- You play Red in a stake match; the computer plays Blue.
-- Computer AI: prefers a capturing jump, otherwise places/moves at random.
-- The same rules are shown inside the Guti game screen.
-
-#### Guti rule simplifications (please read)
-This is a **simplified, playable version** of a traditional-style bead
-game, **not an official tournament rulebook**:
-- The board is a 7×7 grid of points (49 points, 32 beads placed).
-- Only one jump per turn — no multi-jump chains.
-- No forced-capture rule (you may move instead of capturing).
-- No safe points and no special "home" or "mill" rules.
-- A player who cannot move on their turn loses.
-
 ## Stake matches — the same system in every game
 
 - **Stake match vs Computer** — entry **10 coins** deducted when the match starts.
@@ -74,7 +56,7 @@ game, **not an official tournament rulebook**:
 - **Practice match** — 2-player pass-and-play on the same device, no stake,
   no coins change.
 - The admin panel's total commission counts completed stake matches from
-  Ludo, Daba, and Guti together.
+  Ludo and Daba together.
 - One exception: a Daba match drawn by stalemate has no winner, so the
   10-coin entry is refunded and no commission is taken.
 
@@ -156,9 +138,9 @@ folder can do on its own.
 
 ## Files
 
-- `index.html` — page structure, game-select home, login/signup, admin panel, all three game boards, dice
-- `styles.css` — ultra-realistic CSS-only design: wood-grain frames, felt/leather gradients, 3D tokens and pieces, 3D dice, responsive layout
-- `app.js` — login, admin, balance, stake system, Ludo rules, Daba (chess) rules + computer opponent, Guti rules + computer opponent
+- `index.html` — page structure, game-select home, compact login/signup, admin panel, Ludo and Daba boards, real 3D dice
+- `styles.css` — ultra-realistic CSS-only design: wood-grain frames, felt/leather gradients, 3D tokens and pieces, real 3D dice with tumble/settle animation, compact header login, responsive layout
+- `app.js` — login, admin, balance, stake system, Ludo rules + step-by-step token movement + real dice, Daba (chess) rules + computer opponent
 - `vercel.json` — static Vercel config (no build step)
 - `.gitignore` — ignores OS files, `node_modules/`, logs
 
@@ -167,3 +149,7 @@ folder can do on its own.
 Coins here are game points. They have no taka value, cannot be deposited
 with real money, and cannot be cashed out. Do not add payment code to
 this prototype.
+
+## Guti status
+
+Bead 16-16 Guti is **not in this version**. It was removed for now at the user's request. Ludo and Daba only. Guti will be added back later.
