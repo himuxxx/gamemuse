@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gaming Arena — Ludo, Daba (Chess) &amp; Bead 16-16 Guti — Virtual Coins Only</title>
+<title>Gaming Arena — Ludo &amp; Daba (Chess) — Virtual Coins Only</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -19,12 +19,11 @@
     <span id="userInfo">Not logged in</span>
     <span class="balance" id="balanceBadge" hidden>🪙 <span id="balanceValue">0</span></span>
     <button id="logoutBtn" class="btn small" hidden>Logout</button>
+    <button id="authToggleBtn" class="btn small">Login / Signup</button>
+    <button id="adminLinkBtn" class="btn small" hidden>Admin</button>
   </div>
-</header>
-
-<main class="layout">
   <!-- Auth / account panel (unchanged IDs and behaviour) -->
-  <section class="card" id="authCard">
+  <section class="card auth-compact" id="authCard" hidden>
     <h2>Login / Signup</h2>
     <p class="muted">Your account, balance and match history are saved in this browser (localStorage). Log out and log back in later — nothing is deleted on this device.</p>
 
@@ -54,11 +53,14 @@
       <ul id="historyList" class="history"></ul>
     </div>
   </section>
+</header>
+
+<main class="layout">
 
   <!-- Game-select home screen -->
   <section class="card game-card" id="homeView">
     <h2>Choose a game</h2>
-    <p class="muted">All stake matches use the same rule: entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> system commission (10 + 10 = 20 pot). You cannot start a stake match with less than 10 coins, and restarting mid-match does <strong>not</strong> refund the entry. Practice matches are free, 2-player pass-and-play on this device.</p>
+    <p class="muted">Ludo and Daba stake matches use the same rule: entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> system commission (10 + 10 = 20 pot). You cannot start a stake match with less than 10 coins, and restarting mid-match does <strong>not</strong> refund the entry. Practice matches are free, 2-player pass-and-play on this device.</p>
     <div class="game-grid">
       <article class="game-tile ludo-tile">
         <div class="tile-art ludo-art" aria-hidden="true">🎲</div>
@@ -71,12 +73,6 @@
         <h3>Daba (Chess)</h3>
         <p>Full chess: legal moves, check, checkmate, stalemate, castling, en passant, promotion to queen.</p>
         <button id="playChessBtn" class="btn primary big">▶ Play Daba</button>
-      </article>
-      <article class="game-tile guti-tile">
-        <div class="tile-art guti-art" aria-hidden="true">● ● ●</div>
-        <h3>Bead 16-16 Guti</h3>
-        <p>16 beads vs 16 beads. Place your beads, then move and capture by jumping over an opponent bead.</p>
-        <button id="playGutiBtn" class="btn primary big">▶ Play Guti</button>
       </article>
     </div>
     <p class="hint">Tip: log in first if you want to play a stake match. Practice needs no login.</p>
@@ -110,7 +106,7 @@
     </div>
 
     <div class="dice-row">
-      <div class="dice-scene">
+      <div class="dice-scene" id="diceScene">
         <div id="dice" class="dice" title="Dice">
           <div class="face face-1"><span></span></div>
           <div class="face face-2"><span></span><span></span></div>
@@ -160,46 +156,6 @@
     <div class="legend">
       <span><span class="chess-mini white">♔</span> White — you in stake mode / Player 1 in practice</span>
       <span><span class="chess-mini black">♚</span> Black — Computer / Player 2 in practice</span>
-    </div>
-  </section>
-
-  <!-- Bead 16-16 Guti -->
-  <section class="card game-card" id="gutiView" hidden>
-    <button id="backFromGuti" class="btn small">← All games</button>
-    <h2>Bead 16-16 Guti — Red vs Blue</h2>
-    <div class="rules-box">
-      <h3>How to play (in simple words)</h3>
-      <ol>
-        <li><strong>Placement:</strong> take turns putting one bead on any empty point. Each side places <strong>16 beads</strong>. Red places first.</li>
-        <li><strong>Movement:</strong> after all beads are placed, take turns moving one bead one step to a neighbouring empty point — sideways, up/down, or diagonally.</li>
-        <li><strong>Capture by jumping:</strong> jump straight over a neighbouring opponent bead (sideways, up/down, or diagonally) and land on the empty point just behind it. That opponent bead is removed. One jump per turn.</li>
-        <li><strong>Win:</strong> capture all of your opponent's beads, or leave them with no legal move.</li>
-      </ol>
-      <p class="hint"><strong>Simplification note:</strong> this is a simplified, playable version of a traditional-style bead game, not an official tournament rulebook. Simplified here: a 7×7 point board, one jump per turn (no multi-jump chains), no safe points, and no forced-capture rule. See README for the full list.</p>
-    </div>
-    <p class="muted">
-      <strong>Stake match vs Computer:</strong> entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> commission (10 + 10 = 20 pot).
-      You play Red; the computer plays Blue. Blocked below 10 coins; restarting mid-match does not refund the entry.<br>
-      <strong>Practice:</strong> 2-player pass-and-play, no stake, no coins change.
-    </p>
-    <div class="mode-row">
-      <button id="gutiStakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins)</button>
-      <button id="gutiPracticeBtn" class="btn">▶ Practice — 2 players, same device</button>
-      <button id="gutiResetBtn" class="btn small">Restart board</button>
-    </div>
-    <div class="status-row">
-      <span id="gutiTurn">Press a start button to play.</span>
-      <span id="gutiStakeLabel" class="pill">No active stake</span>
-    </div>
-    <p id="gutiCaptured" class="muted">Red: 16 beads &middot; Blue: 16 beads</p>
-    <p id="gutiPhase" class="muted">Phase: —</p>
-    <div class="board-wrap wood-frame guti-wrap">
-      <div id="gutiBoard" class="guti-board" aria-label="Guti board"></div>
-    </div>
-    <p id="gutiStatus" class="muted">Placement: click an empty point to place a bead. Movement: click your bead, then a highlighted point.</p>
-    <div class="legend">
-      <span><i class="dot red"></i> Red — you in stake mode / Player 1 in practice</span>
-      <span><i class="dot blue"></i> Blue — Computer / Player 2 in practice</span>
     </div>
   </section>
 
