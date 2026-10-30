@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gaming Arena — Ludo, Daba (Chess) &amp; Bead 16-16 Guti — Virtual Coins Only</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🎲</span>
+    <div>
+      <h1>GAMING ARENA</h1>
+      <p>Virtual coins only &middot; No real money &middot; No cashout</p>
+    </div>
+  </div>
+  <div class="userbar" id="userbar">
+    <span id="userInfo">Not logged in</span>
+    <span class="balance" id="balanceBadge" hidden>🪙 <span id="balanceValue">0</span></span>
+    <button id="logoutBtn" class="btn small" hidden>Logout</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- Auth / account panel (unchanged IDs and behaviour) -->
+  <section class="card" id="authCard">
+    <h2>Login / Signup</h2>
+    <p class="muted">Your account, balance and match history are saved in this browser (localStorage). Log out and log back in later — nothing is deleted on this device.</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Login</button>
+      <button class="tab" data-tab="signup">Signup</button>
+    </div>
+
+    <form id="loginForm" class="form">
+      <label>Username <input id="loginUser" required autocomplete="username" placeholder="e.g. shakib"></label>
+      <label>Password <input id="loginPass" type="password" required autocomplete="current-password" placeholder="Your password"></label>
+      <button class="btn primary" type="submit">Login</button>
+      <p class="hint">Demo admin: <code>admin</code> / <code>admin123</code> — change this before any public use (see README).</p>
+    </form>
+
+    <form id="signupForm" class="form" hidden>
+      <label>Choose a username <input id="signupUser" required autocomplete="username" placeholder="Choose a username"></label>
+      <label>Choose a password <input id="signupPass" type="password" required autocomplete="new-password" placeholder="Choose a password"></label>
+      <button class="btn primary" type="submit">Create account — start with 100 coins</button>
+      <p class="hint">New accounts start with <strong>100 virtual coins</strong>. Prototype only: do not reuse a real password here.</p>
+    </form>
+
+    <div id="authMessage" class="message" hidden></div>
+
+    <div id="historyBox" hidden>
+      <h3>Your match history</h3>
+      <ul id="historyList" class="history"></ul>
+    </div>
+  </section>
+
+  <!-- Game-select home screen -->
+  <section class="card game-card" id="homeView">
+    <h2>Choose a game</h2>
+    <p class="muted">All stake matches use the same rule: entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> system commission (10 + 10 = 20 pot). You cannot start a stake match with less than 10 coins, and restarting mid-match does <strong>not</strong> refund the entry. Practice matches are free, 2-player pass-and-play on this device.</p>
+    <div class="game-grid">
+      <article class="game-tile ludo-tile">
+        <div class="tile-art ludo-art" aria-hidden="true">🎲</div>
+        <h3>Ludo</h3>
+        <p>Red vs Yellow, 4 tokens each. Roll a 6 to leave home, capture on the way, exact roll to finish.</p>
+        <button id="playLudoBtn" class="btn primary big">▶ Play Ludo</button>
+      </article>
+      <article class="game-tile chess-tile">
+        <div class="tile-art chess-art" aria-hidden="true">♞</div>
+        <h3>Daba (Chess)</h3>
+        <p>Full chess: legal moves, check, checkmate, stalemate, castling, en passant, promotion to queen.</p>
+        <button id="playChessBtn" class="btn primary big">▶ Play Daba</button>
+      </article>
+      <article class="game-tile guti-tile">
+        <div class="tile-art guti-art" aria-hidden="true">● ● ●</div>
+        <h3>Bead 16-16 Guti</h3>
+        <p>16 beads vs 16 beads. Place your beads, then move and capture by jumping over an opponent bead.</p>
+        <button id="playGutiBtn" class="btn primary big">▶ Play Guti</button>
+      </article>
+    </div>
+    <p class="hint">Tip: log in first if you want to play a stake match. Practice needs no login.</p>
+  </section>
+
+  <!-- Ludo (IDs and logic unchanged; restyled only) -->
+  <section class="card game-card" id="ludoView" hidden>
+    <button id="backFromLudo" class="btn small">← All games</button>
+    <h2>Ludo — Red vs Yellow</h2>
+    <p class="muted">
+      <strong>Stake match vs Computer:</strong> you pay <strong>10 coins</strong> to enter.
+      Winner gets <strong>15 coins</strong>, <strong>5 coins</strong> go to system commission (10 + 10 = 20 pot).
+      If you lose, your 10 coins are lost. You cannot start a stake match with less than 10 coins.<br>
+      <strong>Practice:</strong> 2-player pass-and-play on this device, no stake, no coins change.
+    </p>
+
+    <div class="mode-row">
+      <button id="stakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins)</button>
+      <button id="practiceBtn" class="btn">▶ Practice — 2 players, same device</button>
+      <button id="resetBtn" class="btn small">Restart board</button>
+    </div>
+
+    <div class="status-row">
+      <span id="turnLabel">Log in, then start a match.</span>
+      <span id="stakeLabel" class="pill">No active stake</span>
+    </div>
+
+    <div class="board-wrap wood-frame">
+      <div id="board" class="board" aria-label="Ludo board"></div>
+      <div id="tokensLayer" class="tokens-layer"></div>
+    </div>
+
+    <div class="dice-row">
+      <div class="dice-scene">
+        <div id="dice" class="dice" title="Dice">
+          <div class="face face-1"><span></span></div>
+          <div class="face face-2"><span></span><span></span></div>
+          <div class="face face-3"><span></span><span></span><span></span></div>
+          <div class="face face-4"><span></span><span></span><span></span><span></span></div>
+          <div class="face face-5"><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="face face-6"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div>
+        <button id="rollBtn" class="btn primary big" disabled>Roll dice</button>
+        <p id="gameMessage" class="muted">Roll a 6 to leave home. Land on an opponent (except on a safe ★ square) to send them home. Exact roll to finish. First to bring all 4 tokens home wins.</p>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i class="dot red"></i> Red — you in stake mode / Player 1 in practice</span>
+      <span><i class="dot yellow"></i> Yellow — Computer / Player 2 in practice</span>
+      <span>★ = safe square (cannot be captured)</span>
+    </div>
+  </section>
+
+  <!-- Daba / Chess -->
+  <section class="card game-card" id="chessView" hidden>
+    <button id="backFromChess" class="btn small">← All games</button>
+    <h2>Daba (Chess) — White vs Black</h2>
+    <p class="muted">
+      <strong>Stake match vs Computer:</strong> entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> commission (10 + 10 = 20 pot).
+      You play White; the computer plays Black. Blocked below 10 coins; restarting mid-match does not refund the entry.<br>
+      <strong>Practice:</strong> 2-player pass-and-play, no stake, no coins change.
+      Full rules: legal moves only, check, checkmate, stalemate, castling, en passant, and pawn promotion (automatic to queen).
+    </p>
+    <div class="mode-row">
+      <button id="chessStakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins)</button>
+      <button id="chessPracticeBtn" class="btn">▶ Practice — 2 players, same device</button>
+      <button id="chessResetBtn" class="btn small">Restart board</button>
+    </div>
+    <div class="status-row">
+      <span id="chessTurn">Press a start button to play.</span>
+      <span id="chessStakeLabel" class="pill">No active stake</span>
+    </div>
+    <p id="chessCaptured" class="muted">Captured: —</p>
+    <div class="board-wrap wood-frame chess-wrap">
+      <div id="chessBoard" class="chess-board" aria-label="Chess board"></div>
+    </div>
+    <p id="chessStatus" class="muted">Click a White piece (or the side to move in practice) to see its legal moves, then click a highlighted square.</p>
+    <div class="legend">
+      <span><span class="chess-mini white">♔</span> White — you in stake mode / Player 1 in practice</span>
+      <span><span class="chess-mini black">♚</span> Black — Computer / Player 2 in practice</span>
+    </div>
+  </section>
+
+  <!-- Bead 16-16 Guti -->
+  <section class="card game-card" id="gutiView" hidden>
+    <button id="backFromGuti" class="btn small">← All games</button>
+    <h2>Bead 16-16 Guti — Red vs Blue</h2>
+    <div class="rules-box">
+      <h3>How to play (in simple words)</h3>
+      <ol>
+        <li><strong>Placement:</strong> take turns putting one bead on any empty point. Each side places <strong>16 beads</strong>. Red places first.</li>
+        <li><strong>Movement:</strong> after all beads are placed, take turns moving one bead one step to a neighbouring empty point — sideways, up/down, or diagonally.</li>
+        <li><strong>Capture by jumping:</strong> jump straight over a neighbouring opponent bead (sideways, up/down, or diagonally) and land on the empty point just behind it. That opponent bead is removed. One jump per turn.</li>
+        <li><strong>Win:</strong> capture all of your opponent's beads, or leave them with no legal move.</li>
+      </ol>
+      <p class="hint"><strong>Simplification note:</strong> this is a simplified, playable version of a traditional-style bead game, not an official tournament rulebook. Simplified here: a 7×7 point board, one jump per turn (no multi-jump chains), no safe points, and no forced-capture rule. See README for the full list.</p>
+    </div>
+    <p class="muted">
+      <strong>Stake match vs Computer:</strong> entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> commission (10 + 10 = 20 pot).
+      You play Red; the computer plays Blue. Blocked below 10 coins; restarting mid-match does not refund the entry.<br>
+      <strong>Practice:</strong> 2-player pass-and-play, no stake, no coins change.
+    </p>
+    <div class="mode-row">
+      <button id="gutiStakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins)</button>
+      <button id="gutiPracticeBtn" class="btn">▶ Practice — 2 players, same device</button>
+      <button id="gutiResetBtn" class="btn small">Restart board</button>
+    </div>
+    <div class="status-row">
+      <span id="gutiTurn">Press a start button to play.</span>
+      <span id="gutiStakeLabel" class="pill">No active stake</span>
+    </div>
+    <p id="gutiCaptured" class="muted">Red: 16 beads &middot; Blue: 16 beads</p>
+    <p id="gutiPhase" class="muted">Phase: —</p>
+    <div class="board-wrap wood-frame guti-wrap">
+      <div id="gutiBoard" class="guti-board" aria-label="Guti board"></div>
+    </div>
+    <p id="gutiStatus" class="muted">Placement: click an empty point to place a bead. Movement: click your bead, then a highlighted point.</p>
+    <div class="legend">
+      <span><i class="dot red"></i> Red — you in stake mode / Player 1 in practice</span>
+      <span><i class="dot blue"></i> Blue — Computer / Player 2 in practice</span>
+    </div>
+  </section>
+
+  <!-- Admin panel (unchanged IDs) -->
+  <section class="card" id="adminCard" hidden>
+    <h2>Admin panel</h2>
+    <p class="muted">Only visible after admin login. This is a local prototype: it shows only users created in this browser.</p>
+    <p><strong>Total virtual commission earned:</strong> 🪙 <span id="commissionValue">0</span></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Username</th><th>Balance</th><th>Matches</th><th>Adjust coins</th></tr></thead>
+        <tbody id="adminUsers"></tbody>
+      </table>
+    </div>
+    <h3>All match history (all users)</h3>
+    <ul id="adminHistory" class="history"></ul>
+  </section>
+</main>
+
+<footer class="footer">
+  <p>Prototype — virtual coins only. No real taka, no deposit, no cashout, no payment code. Accounts live in this browser only; a shared, cross-device login system needs a database later.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
