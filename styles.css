@@ -483,3 +483,68 @@ body.ludo-active .layout{padding:4px}
   .ludo-stage-bar #diceResult{font-size:11px}
   .ludo-stage-bar #turnLabel{min-width:40px;font-size:11px}
 }
+
+/* ===== MOBILE IMPROVEMENT (2026-10-31, mobile only) =====
+   Audit at 320/375/430px: stage-bar label truncated mid-word
+   ('Practice started — Yellow (Play...'), dice only 48px/44px,
+   tokens ~20px with a 3px border, header logo 42px + wrapping
+   userbar, home tiles/buttons cramped, stage-bar buttons shrunk
+   to 38-40px (below the 44px tap target), and no safe-area padding.
+   Fixes below are all inside max-width media queries, so PC is
+   untouched. Short turn labels come from JS (shortenTurnLabel,
+   applied at <=560px): e.g. 'Yellow to roll', 'Red rolled 4'.
+   Fit re-check (board = min(width, 100dvh-300-safe)):
+   - 320x667 2P: content 300 wide, board 292, bar 52 + strips
+     112 + gaps 12 + frame 300 = 476 < stage 595, margin +119
+   - 375x667 2P: content 355 wide, board 347, bar 52 + strips
+     120 + gaps 12 + frame 355 = 539 < stage 595, margin +56
+   - 375x667 4P: strips 112, total 531 < 595, margin +64
+   - 430x932 2P: content 410 wide, board 402, total 594 < 860
+   - 375x568 2P (short): board dvh-limited 260, total 444
+     < stage 496, margin +52. No page scroll in any case. */
+@media (max-width:560px){
+  .layout{padding-left:max(12px, env(safe-area-inset-left));padding-right:max(12px, env(safe-area-inset-right));padding-bottom:max(12px, env(safe-area-inset-bottom))}
+  body.ludo-active .layout{padding-left:max(4px, env(safe-area-inset-left));padding-right:max(4px, env(safe-area-inset-right));padding-bottom:max(4px, env(safe-area-inset-bottom))}
+  .topbar{padding:10px 12px;gap:8px}
+  .logo{font-size:32px}
+  .brand h1{font-size:20px;letter-spacing:1px}
+  .brand p{font-size:12px}
+  .userbar{gap:8px}
+  .userbar .btn.small{min-height:44px;padding:10px 12px;font-size:14px}
+  #authCard.auth-compact{left:8px;right:8px;width:auto;max-height:72vh}
+  .game-card{padding:16px}
+  .game-grid{gap:16px}
+  .game-tile{padding:18px 16px}
+  .game-tile h3{font-size:20px}
+  .game-tile p{font-size:15px;line-height:1.55}
+  .tile-art{font-size:56px;height:76px}
+  h2{font-size:21px}
+  .muted,.hint{font-size:14px}
+  input{font-size:16px;padding:12px}
+  #homeView .btn.big,#ludoSetup .mode-row .btn,#chessView .mode-row .btn{width:100%;min-height:48px;font-size:16px;padding:13px 14px}
+  .mode-row .btn{flex:1 1 100%}
+  #ludoView.match-active{padding:6px}
+  #ludoView.match-active .ludo-stage{height:calc(100dvh - 72px - env(safe-area-inset-bottom, 0px))}
+  #ludoView.match-active .ludo-board-frame{padding:4px;width:min(100%, 560px, calc(100dvh - 300px - env(safe-area-inset-bottom, 0px)));
+    box-shadow:0 34px 64px rgba(0,0,0,.75),inset 0 2px 0 rgba(255,255,255,.4),inset 0 -8px 16px rgba(0,0,0,.5),inset 0 0 0 2px rgba(0,0,0,.3)}
+  .ludo-stage.count-2 .player-dice{--cube:56px}
+  .ludo-stage.count-4 .player-dice{--cube:52px}
+  .flat-dice-face{box-shadow:inset 0 3px 0 rgba(255,255,255,1),inset 0 -10px 16px rgba(0,0,0,.2),inset 0 0 0 1px rgba(0,0,0,.08),0 14px 22px rgba(0,0,0,.6)}
+  .dice-podium{width:78%;height:16%;background:radial-gradient(ellipse at center,rgba(0,0,0,.65),transparent 70%)}
+  .ludo-stage-bar #turnLabel{font-size:14px;font-weight:800;color:#ffffff}
+  .ludo-stage-bar #soundToggleBtn,.ludo-stage-bar #resetBtn{min-height:44px;padding:10px 11px;font-size:13px;white-space:nowrap;flex-shrink:0}
+  .ludo-board-wrap .token{width:6.4%;font-size:14px;border-width:2px;
+    box-shadow:0 14px 22px rgba(0,0,0,.75),inset 0 -6px 8px rgba(0,0,0,.35),inset 0 5px 7px rgba(255,255,255,.95)}
+  .token.movable{outline-width:3px}
+  #chessView .board-wrap{padding:8px;width:100%}
+  .chess-square{font-size:clamp(32px, 11vw, 48px)}
+  #chessView .status-row{font-size:15px}
+}
+@media (max-width:360px){
+  .ludo-stage.count-2 .player-dice{--cube:52px}
+  .ludo-stage.count-4 .player-dice{--cube:48px}
+}
+@media (max-width:400px){
+  .ludo-stage-bar #soundToggleBtn,.ludo-stage-bar #resetBtn{min-height:44px;padding:10px 9px;font-size:12px}
+  .game-tile{padding:16px 14px}
+}
