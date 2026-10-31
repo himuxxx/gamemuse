@@ -60,12 +60,12 @@
   <!-- Game-select home screen -->
   <section class="card game-card" id="homeView">
     <h2>Choose a game</h2>
-    <p class="muted">Ludo and Daba stake matches use the same rule: entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> system commission (10 + 10 = 20 pot). You cannot start a stake match with less than 10 coins, and restarting mid-match does <strong>not</strong> refund the entry. Practice matches are free, 2-player pass-and-play on this device.</p>
+    <p class="muted">Ludo and Daba stake matches use the same rule: entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> system commission (10 + 10 = 20 pot). You cannot start a stake match with less than 10 coins, and restarting mid-match does <strong>not</strong> refund the entry. Practice matches are free, pass-and-play on this device, with 2 or 4 players.</p>
     <div class="game-grid">
       <article class="game-tile ludo-tile">
         <div class="tile-art ludo-art" aria-hidden="true">🎲</div>
         <h3>Ludo</h3>
-        <p>Yellow vs Red, 4 tokens each. Roll a 6 to leave home, capture on the way, exact roll to finish.</p>
+        <p>2 or 4 players, 4 tokens each, each player with their own dice. Roll a 6 to leave home, capture on the way, exact roll to finish. Stake matches are 2-player only (you vs Computer).</p>
         <button id="playLudoBtn" class="btn primary big">▶ Play Ludo</button>
       </article>
       <article class="game-tile chess-tile">
@@ -78,20 +78,25 @@
     <p class="hint">Tip: log in first if you want to play a stake match. Practice needs no login.</p>
   </section>
 
-  <!-- Ludo (IDs and logic unchanged; restyled only) -->
+  <!-- Ludo — per-player dice: 2 dice in 2-player games, 4 dice in 4-player games -->
   <section class="card game-card" id="ludoView" hidden>
     <button id="backFromLudo" class="btn small">← All games</button>
-    <h2>Ludo — Yellow vs Red</h2>
+    <h2>Ludo — 2 or 4 players</h2>
     <p class="muted">
-      <strong>Stake match vs Computer:</strong> you pay <strong>10 coins</strong> to enter.
+      <strong>Stake match vs Computer:</strong> 2-player only (you as Yellow vs Red computer).
+      You pay <strong>10 coins</strong> to enter.
       Winner gets <strong>15 coins</strong>, <strong>5 coins</strong> go to system commission (10 + 10 = 20 pot).
       If you lose, your 10 coins are lost. You cannot start a stake match with less than 10 coins.<br>
-      <strong>Practice:</strong> 2-player pass-and-play on this device, no stake, no coins change.
+      <strong>Practice:</strong> pass-and-play on this device, no stake, no coins change.
+      Choose <strong>2 Players</strong> (Yellow vs Red, 2 dice) or <strong>4 Players</strong>
+      (Yellow, Green, Red, Blue in clockwise order, 4 dice). Each player has their own dice:
+      only the current player's dice is highlighted and rolls.
     </p>
 
     <div class="mode-row">
-      <button id="stakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins)</button>
+      <button id="stakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins, 2 players)</button>
       <button id="practiceBtn" class="btn">▶ Practice — 2 players, same device</button>
+      <button id="practice4Btn" class="btn">▶ Practice — 4 players, same device</button>
       <button id="resetBtn" class="btn small">Restart board</button>
     </div>
 
@@ -99,26 +104,13 @@
       <span id="turnLabel">Log in, then start a match.</span>
       <span id="stakeLabel" class="pill">No active stake</span>
     </div>
-    <div class="dice-tray three-off" id="diceTray">
-      <div class="dice-tray-inner">
-        <div id="threeDice" class="three-dice" aria-label="3D dice"></div>
-        <div class="dice-scene" id="diceScene">
-          <div id="dice" class="dice" title="Dice">
-            <div class="face face-1"><span></span></div>
-            <div class="face face-2"><span></span><span></span></div>
-            <div class="face face-3"><span></span><span></span><span></span></div>
-            <div class="face face-4"><span></span><span></span><span></span><span></span></div>
-            <div class="face face-5"><span></span><span></span><span></span><span></span><span></span></div>
-            <div class="face face-6"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          </div>
-        </div>
-        <div class="dice-controls">
-          <button id="rollBtn" class="btn primary big" disabled>Roll dice</button>
-          <button id="soundToggleBtn" class="btn small" type="button" aria-label="Toggle sound">Sound on</button>
-          <div class="dice-result-row">
-            <span id="diceResult" class="dice-result">Roll to start</span>
-            <div id="finalDiceFace" class="final-dice-face" role="img" aria-label="Dice shows 1" title="Dice shows 1"></div>
-          </div>
+    <div class="dice-tray" id="diceTray">
+      <div id="playerDiceRow" class="player-dice-row count-2" aria-label="Player dice"></div>
+      <div class="dice-controls">
+        <button id="rollBtn" class="btn primary big" disabled>Roll dice</button>
+        <button id="soundToggleBtn" class="btn small" type="button" aria-label="Toggle sound">Sound on</button>
+        <div class="dice-result-row">
+          <span id="diceResult" class="dice-result">Roll to start</span>
         </div>
       </div>
       <p id="gameMessage" class="muted">Roll a 6 to leave home. Land on an opponent (except on a safe ★ square) to send them home. Exact roll to finish. First to bring all 4 tokens home wins.</p>
@@ -133,11 +125,6 @@
     </div>
     <div id="winBanner" class="win-banner" hidden>Winner!</div>
 
-    <div class="legend">
-      <span><i class="dot yellow"></i> Yellow — you in stake mode / Player 1 in practice</span>
-      <span><i class="dot red"></i> Red — Computer / Player 2 in practice</span>
-      <span>★ = safe square (cannot be captured)</span>
-    </div>
   </section>
 
   <!-- Daba / Chess -->
@@ -185,10 +172,6 @@
     <ul id="adminHistory" class="history"></ul>
   </section>
 </main>
-
-<footer class="footer">
-  <p>Prototype — virtual coins only. No real taka, no deposit, no cashout, no payment code. Accounts live in this browser only; a shared, cross-device login system needs a database later.</p>
-</footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
