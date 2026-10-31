@@ -312,13 +312,30 @@ function renderPlayerFinalFace(canonical, v) {
     face.appendChild(cell);
   }
 }
+// One-screen stage toggle: while a match is active the setup text and
+// mode buttons are hidden (CSS) and the stage fits the viewport, so the
+// board, dice and Roll button are visible without page scrolling.
+function setLudoMatchActive(on) {
+  var v = el('ludoView'); if (v) v.classList.toggle('match-active', !!on);
+  if (document.body) document.body.classList.toggle('ludo-active', !!on);
+}
 function renderPlayerDice() {
-  var row = el('playerDiceRow'); if (!row) return;
+  // Dice are distributed into four fixed corner slots, not a tray above
+  // the board: top strip Yellow(0, left) + Green(1, right), bottom strip
+  // Blue(3, left) + Red(2, right) — each colour's home corner. Inactive
+  // slots are emptied and hidden with visibility (not display:none), so
+  // 2-player games show only Yellow + Red without the other slots
+  // shifting position. Cube/final-face IDs are unchanged, so the tumble
+  // and final-face code below keeps working untouched.
+  var stage = el('ludoStage');
+  if (stage) { stage.classList.remove('count-2', 'count-4'); }
   var active = game ? game.active : lastLudoActive;
-  row.className = 'player-dice-row count-' + active.length;
-  row.innerHTML = '';
-  for (var ai = 0; ai < active.length; ai++) {
-    var canonical = active[ai];
+  if (stage) stage.classList.add('count-' + active.length);
+  for (var canonical = 0; canonical < 4; canonical++) {
+    var slot = el('diceSlot-' + canonical); if (!slot) continue;
+    slot.innerHTML = '';
+    if (active.indexOf(canonical) < 0) { slot.classList.add('empty'); continue; }
+    slot.classList.remove('empty');
     var last = game && game.lastRolls ? (game.lastRolls[canonical] || 1) : 1;
     var unit = document.createElement('div');
     unit.className = 'player-dice' + (game && ludoTurnId() === canonical ? ' active' : '');
@@ -334,12 +351,13 @@ function renderPlayerDice() {
     }
     scene.appendChild(cube);
     var label = document.createElement('div'); label.className = 'player-dice-label';
-    label.innerHTML = '<i class="dot ' + PLAYER_CSS[canonical] + '"></i> ' + PLAYER_NAMES[canonical];
+    label.setAttribute('aria-label', PLAYER_NAMES[canonical] + ' dice');
+    label.innerHTML = '<i class="dot ' + PLAYER_CSS[canonical] + '"></i>';
     var small = document.createElement('div'); small.className = 'player-final-face';
     small.id = 'playerFinal-' + canonical;
     small.setAttribute('aria-label', 'Dice shows ' + last);
     unit.appendChild(scene); unit.appendChild(label); unit.appendChild(small);
-    row.appendChild(unit);
+    slot.appendChild(unit);
     renderPlayerFinalFace(canonical, last);
   }
 }
@@ -381,6 +399,7 @@ function startGame(mode, playerCount) {
     // addHistory already saved the user; refresh the local copy.
     user = currentUser();
   }
+  setLudoMatchActive(true);
   game = {
     mode: mode,
     playerCount: count,
@@ -390,6 +409,10 @@ function startGame(mode, playerCount) {
     lastRolls: {}
   };
   active.forEach(function (id) { game.lastRolls[id] = 1; });
+  // Reset the Rolled display to its initial state on every new match:
+  // without this, a previous game's 'Rolled: 5' stayed visible before
+  // any roll in the new game, even though all dice now show 1.
+  var dr0 = el('diceResult'); if (dr0) dr0.textContent = 'Roll to start';
   el('rollBtn').disabled = false;
   renderPlayerDice(); renderTokens(); updateStakeLabel(); updateUserbar();
   setTurnLabel(mode === 'stake' ? 'Stake match started — Yellow (you) to roll.' : (count === 4 ? 'Practice started — Yellow (Player 1) to roll. 4 players: Yellow, Green, Red, Blue.' : 'Practice started — Yellow (Player 1) to roll.'));
@@ -682,7 +705,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (game && game.mode === 'stake') {
       el('gameMessage').textContent = 'Board restarted. Note: a stake entry already paid is not refunded by restarting.';
     }
-    game = null; el('rollBtn').disabled = true; renderTokens(); renderPlayerDice(); updateStakeLabel();
+    game = null; el('rollBtn').disabled = true; setLudoMatchActive(false); renderTokens(); renderPlayerDice(); updateStakeLabel();
+    var drR = el('diceResult'); if (drR) drR.textContent = 'Roll to start';
     setTurnLabel('Board cleared. Start a new match.');
   };
   el('rollBtn').onclick = rollDice;
@@ -731,6 +755,7 @@ function recordPracticeGame(label, winnerText) {
 // ---------- Navigation ----------
 function showView(id) {
   ['homeView', 'ludoView', 'chessView'].forEach(function (v) { el(v).hidden = (v !== id); });
+  if (id !== 'ludoView') setLudoMatchActive(false);
   window.scrollTo(0, 0);
 }
 
@@ -1067,7 +1092,7 @@ function chessReset() {
 
 // ---------- Wire up navigation + new games ----------
 document.addEventListener('DOMContentLoaded', function () {
-  el('playLudoBtn').onclick = function () { showView('ludoView'); };
+  el('playLudoBtn').onclick = function () { if (!game) setLudoMatchActive(false); showView('ludoView'); };
   el('playChessBtn').onclick = function () { showView('chessView'); };
   el('backFromLudo').onclick = function () { showView('homeView'); };
   el('backFromChess').onclick = function () { showView('homeView'); };
