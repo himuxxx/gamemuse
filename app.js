@@ -259,7 +259,44 @@ function renderTokens() {
     });
   });
 }
-function setTurnLabel(text) { el('turnLabel').textContent = text; }
+function shortenTurnLabel(text) {
+  if (!text) return text;
+  var m;
+  // Short forms (used up to 1024px): never truncate mid-word in the stage bar.
+  // "Practice started — Yellow (Player 1) to roll." -> "Yellow to roll"
+  m = text.match(/^(Practice|Stake match) started[^.]*? (Yellow|Green|Red|Blue)\b/);
+  if (m) return m[2] + ' to roll';
+  m = text.match(/^(Yellow|Green|Red|Blue|Computer) rolled (\d+)/);
+  if (m) return m[1] + ' rolled ' + m[2];
+  m = text.match(/^(Yellow|Green|Red|Blue) moved token (\d+)/);
+  if (m) {
+    if (text.indexOf('captured') >= 0) return text.indexOf('Extra roll') >= 0 ? m[1] + ' moved • captured • Extra' : m[1] + ' moved • captured';
+    return m[1] + ' moved token ' + m[2];
+  }
+  if (text.indexOf('Board cleared') === 0) return 'Start a new match';
+  if (text.length > 26) {
+    var cut = text.slice(0, 26), sp = cut.lastIndexOf(' ');
+    return (sp > 10 ? cut.slice(0, sp) : cut) + '…';
+  }
+  return text;
+}
+function setTurnLabel(text) {
+  var t = el('turnLabel'); if (!t) return;
+  t.dataset.full = text;
+  t.title = text;
+  // Short form up to 1024px: the stage bar is narrow even at tablet
+  // widths (790-800px live test showed 'Practice started — Yellow (Pl…'
+  // mid-word ellipsis). Above 1024px the full label is readable, so
+  // PC 1920px keeps the full text. Full text stays in dataset.full
+  // and in title (hover tooltip) at every width.
+  t.textContent = (window.innerWidth <= 1024) ? shortenTurnLabel(text) : text;
+}
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('resize', function () {
+    var t = el('turnLabel'); if (!t || !t.dataset.full) return;
+    t.textContent = (window.innerWidth <= 1024) ? shortenTurnLabel(t.dataset.full) : t.dataset.full;
+  });
+}
 function updateStakeLabel() {
   el('stakeLabel').textContent = game && game.mode === 'stake' ? 'Stake match — 10 coins paid, winner gets 15, commission 5' : 'No active stake';
 }
