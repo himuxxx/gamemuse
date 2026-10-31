@@ -298,23 +298,16 @@ function playWin() { [523, 659, 784, 1047].forEach(function (f, i) { setTimeout(
 // same number, so a settled roll is visible even if the cube is small.
 // DICE_SHOW_CLASS is the cube rotation that brings face N to the front.
 var DICE_SHOW_CLASS = { 1: 'show-1', 2: 'show-2', 3: 'show-3', 4: 'show-4', 5: 'show-5', 6: 'show-6' };
-// Pip positions on a 3x3 grid (indices 0-8, row-major). Counts match N.
-var DICE_FINAL_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 var lastLudoActive = [0, 2]; // default 2-player dice before any match starts
 function ludoTurnId() { return game ? game.active[game.turnPos] : null; }
-function renderPlayerFinalFace(canonical, v) {
-  var face = el('playerFinal-' + canonical); if (!face || !DICE_FINAL_PIPS[v]) return;
-  face.setAttribute('aria-label', 'Dice shows ' + v);
-  face.innerHTML = '';
-  for (var i = 0; i < 9; i++) {
-    var cell = document.createElement('i');
-    if (DICE_FINAL_PIPS[v].indexOf(i) >= 0) cell.className = 'pip';
-    face.appendChild(cell);
-  }
-}
+// NOTE: there is deliberately NO small final-face readout any more.
+// Each active player shows exactly ONE dice (the large 3D cube) plus
+// the coloured ball dot. The settled cube face itself is the result,
+// and the stage bar's 'Rolled: X' text states it.
 // One-screen stage toggle: while a match is active the setup text and
 // mode buttons are hidden (CSS) and the stage fits the viewport, so the
-// board, dice and Roll button are visible without page scrolling.
+// board and dice are visible without page scrolling; roll by clicking
+// the current player's dice (there is no Roll button any more).
 function setLudoMatchActive(on) {
   var v = el('ludoView'); if (v) v.classList.toggle('match-active', !!on);
   if (document.body) document.body.classList.toggle('ludo-active', !!on);
@@ -337,9 +330,15 @@ function renderPlayerDice() {
     if (active.indexOf(canonical) < 0) { slot.classList.add('empty'); continue; }
     slot.classList.remove('empty');
     var last = game && game.lastRolls ? (game.lastRolls[canonical] || 1) : 1;
+    var isCurrent = game && ludoTurnId() === canonical;
     var unit = document.createElement('div');
-    unit.className = 'player-dice' + (game && ludoTurnId() === canonical ? ' active' : '');
+    unit.className = 'player-dice' + (isCurrent ? ' active' : '');
     unit.setAttribute('data-player', canonical);
+    // Dice-click to roll: ONLY the current player's dice is clickable
+    // and triggers rollDice() (which itself guards against double rolls,
+    // a pending token move, and the computer's turn in stake mode).
+    // Non-current dice get no handler and do nothing when clicked.
+    if (isCurrent) { unit.onclick = rollDice; unit.title = 'Click to roll'; }
     var scene = document.createElement('div'); scene.className = 'player-dice-scene';
     var cube = document.createElement('div');
     cube.className = 'dice player-cube ' + DICE_SHOW_CLASS[last];
@@ -353,24 +352,17 @@ function renderPlayerDice() {
     var label = document.createElement('div'); label.className = 'player-dice-label';
     label.setAttribute('aria-label', PLAYER_NAMES[canonical] + ' dice');
     label.innerHTML = '<i class="dot ' + PLAYER_CSS[canonical] + '"></i>';
-    var small = document.createElement('div'); small.className = 'player-final-face';
-    small.id = 'playerFinal-' + canonical;
-    small.setAttribute('aria-label', 'Dice shows ' + last);
-    unit.appendChild(scene); unit.appendChild(label); unit.appendChild(small);
+    unit.appendChild(scene); unit.appendChild(label);
     slot.appendChild(unit);
-    renderPlayerFinalFace(canonical, last);
   }
 }
 function setPlayerDiceResult(canonical, v) {
   if (game) game.lastRolls[canonical] = v;
   var dr = el('diceResult'); if (dr) dr.textContent = 'Rolled: ' + v + ' — ' + PLAYER_NAMES[canonical];
-  renderPlayerFinalFace(canonical, v);
 }
 function animatePlayerDiceRoll(canonical, value, done) {
   playDiceRattle();
   var cube = el('playerCube-' + canonical);
-  var small = el('playerFinal-' + canonical);
-  if (small) small.classList.add('rolling');
   if (!cube) { setPlayerDiceResult(canonical, value); if (done) done(); return; }
   cube.className = 'dice player-cube tumbling';
   setTimeout(function () {
@@ -378,7 +370,6 @@ function animatePlayerDiceRoll(canonical, value, done) {
     var scene = cube.parentNode;
     if (scene) { scene.classList.add('dice-settle'); setTimeout(function () { scene.classList.remove('dice-settle'); }, 400); }
     setPlayerDiceResult(canonical, value);
-    if (small) small.classList.remove('rolling');
     setTimeout(done, 380);
   }, 950);
 }
@@ -413,7 +404,6 @@ function startGame(mode, playerCount) {
   // without this, a previous game's 'Rolled: 5' stayed visible before
   // any roll in the new game, even though all dice now show 1.
   var dr0 = el('diceResult'); if (dr0) dr0.textContent = 'Roll to start';
-  el('rollBtn').disabled = false;
   renderPlayerDice(); renderTokens(); updateStakeLabel(); updateUserbar();
   setTurnLabel(mode === 'stake' ? 'Stake match started — Yellow (you) to roll.' : (count === 4 ? 'Practice started — Yellow (Player 1) to roll. 4 players: Yellow, Green, Red, Blue.' : 'Practice started — Yellow (Player 1) to roll.'));
   el('gameMessage').textContent = 'Roll the dice. A 6 lets a token leave home, and also gives an extra roll.';
@@ -443,7 +433,6 @@ function afterTurnChange() {
   if (!game) return;
   var turnId = ludoTurnId();
   setTurnLabel(PLAYER_NAMES[turnId] + ' to roll.');
-  el('rollBtn').disabled = (game.mode === 'stake' && turnId === 2);
   renderPlayerDice(); renderTokens();
   if (game.mode === 'stake' && turnId === 2) setTimeout(function () { if (game) rollDiceComputer(); }, 600);
 }
@@ -637,7 +626,6 @@ function finishGame(winner) {
   var wb = el('winBanner'); if (wb) { wb.hidden = false; wb.textContent = '🏆 ' + winnerName + ' won!'; }
   var bw = el('ludoBoardWrap'); if (bw) { bw.classList.add('win-celebrate'); setTimeout(function () { bw.classList.remove('win-celebrate'); }, 2600); }
   el('gameMessage').textContent = winnerName + ' brought all 4 tokens home first.';
-  el('rollBtn').disabled = true;
   renderTokens();
   var meta = getMeta();
   if (mode === 'stake') {
@@ -705,11 +693,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (game && game.mode === 'stake') {
       el('gameMessage').textContent = 'Board restarted. Note: a stake entry already paid is not refunded by restarting.';
     }
-    game = null; el('rollBtn').disabled = true; setLudoMatchActive(false); renderTokens(); renderPlayerDice(); updateStakeLabel();
+    game = null; setLudoMatchActive(false); renderTokens(); renderPlayerDice(); updateStakeLabel();
     var drR = el('diceResult'); if (drR) drR.textContent = 'Roll to start';
     setTurnLabel('Board cleared. Start a new match.');
   };
-  el('rollBtn').onclick = rollDice;
   var st = el('soundToggleBtn'); if (st) st.onclick = function () { soundOn = !soundOn; st.textContent = soundOn ? 'Sound on' : 'Sound off'; };
   renderPlayerDice();
   updateUserbar();
@@ -1009,8 +996,8 @@ function chessAfterMove(mover) {
     chessDrawStalemate(); return;
   }
   el('chessTurn').textContent = turnName + (inChk ? ' — CHECK!' : '');
-  el('chessStatus').textContent = inChk ? 'Check! The side to move must get out of check.'
-    : 'Click a piece of the side to move to see its legal moves, then click a highlighted square.';
+  // chessStatus element was removed from the UI (see index.html); check/
+  // win/draw state is already shown in chessTurn, so nothing is lost.
   if (st.mode === 'stake' && st.turn === 'b' && !st.over) setTimeout(chessComputerMove, 600);
 }
 function chessFinish(winnerColor, reason) {
@@ -1019,7 +1006,6 @@ function chessFinish(winnerColor, reason) {
   var winnerText = st.mode === 'stake' ? (winnerColor === 'w' ? 'You (White)' : 'Computer (Black)')
     : (winnerColor === 'w' ? 'White' : 'Black');
   el('chessTurn').textContent = '🏆 ' + winnerText + ' won by ' + reason + '!';
-  el('chessStatus').textContent = winnerText + ' won by ' + reason + '. Start a new match to play again.';
   if (st.mode === 'stake' && st.stakeActive) {
     settleStakeGame('Daba (Chess)', winnerColor === 'w');
     st.stakeActive = false;
@@ -1033,7 +1019,6 @@ function chessDrawStalemate() {
   var st = chessState; if (!st) return;
   st.over = true;
   el('chessTurn').textContent = '🤝 Draw by stalemate.';
-  el('chessStatus').textContent = 'Stalemate — no legal move and not in check, so the game is a draw.';
   if (st.mode === 'stake' && st.stakeActive) {
     // A draw has no winner, so the 10-coin entry is refunded and no commission is taken.
     var user = currentUser();
@@ -1078,12 +1063,9 @@ function chessStart(mode) {
   };
   el('chessStakeLabel').textContent = mode === 'stake' ? 'Stake match — 10 coins paid, winner gets 15, commission 5' : 'No active stake';
   el('chessTurn').textContent = mode === 'stake' ? 'Stake match started — your turn (White).' : 'Practice started — White to move.';
-  el('chessStatus').textContent = 'Click a White piece to see its legal moves, then click a highlighted square.';
   chessRender();
 }
 function chessReset() {
-  if (chessState && chessState.stakeActive)
-    el('chessStatus').textContent = 'Board restarted. Note: a stake entry already paid is not refunded by restarting.';
   chessState = null;
   el('chessStakeLabel').textContent = 'No active stake';
   el('chessTurn').textContent = 'Board cleared. Start a new match.';
