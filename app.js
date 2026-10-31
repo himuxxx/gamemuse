@@ -291,13 +291,11 @@ function playCapture() { playTone(700, 0.12, 'sawtooth', 0.08); setTimeout(funct
 function playWin() { [523, 659, 784, 1047].forEach(function (f, i) { setTimeout(function () { playTone(f, 0.25, 'triangle', 0.12); }, i * 130); }); vibrate([80, 60, 80, 60, 120]); }
 
 // ---------- Per-player dice ----------
-// One dice per active player, labelled by colour. Only the current
-// player's dice is highlighted and rolls; the others stay dimmed and
-// keep showing their last roll (1 initially). Each dice unit is a CSS 3D
-// cube (the large dice) plus a small settled-face readout showing the
-// same number, so a settled roll is visible even if the cube is small.
-// DICE_SHOW_CLASS is the cube rotation that brings face N to the front.
-var DICE_SHOW_CLASS = { 1: 'show-1', 2: 'show-2', 3: 'show-3', 4: 'show-4', 5: 'show-5', 6: 'show-6' };
+// One dice per active player, labelled only by the coloured ball dot.
+// Only the current player's dice is clickable and rolls; the others stay
+// dimmed and keep showing their last roll (1 initially). Each dice unit
+// is ONE flat dice-face element that looks 3D (see below). No WebGL
+// canvas and no preserve-3d cube, so a face can never go black.
 var lastLudoActive = [0, 2]; // default 2-player dice before any match starts
 function ludoTurnId() { return game ? game.active[game.turnPos] : null; }
 // NOTE: there is deliberately NO small final-face readout any more.
@@ -312,14 +310,54 @@ function setLudoMatchActive(on) {
   var v = el('ludoView'); if (v) v.classList.toggle('match-active', !!on);
   if (document.body) document.body.classList.toggle('ludo-active', !!on);
 }
+// ---------- Per-player dice: FLAT, guaranteed-visible dice face ----------
+// Why the Three.js cube was removed: in screenshots/previews (and on
+// some devices) its WebGL top face failed to render for faces 2-5,
+// face 6 showed 1 pip, and the previous player's dice vanished unless
+// its last roll was 1. A DOM face cannot do that: it is always a
+// white rounded face with a real grid of black pip spans, so the pip
+// count in the DOM is always the rolled number, and the face is
+// always visible (inactive dice are only dimmed to opacity 0.68).
+// The face LOOKS 3D via a highlight gradient, dark rim, inner shadow,
+// drop shadow and a podium shadow ellipse, plus a small fixed
+// perspective tilt (rotateX/rotateY on a single flat element —
+// NOT a preserve-3d cube, NOT a WebGL canvas, NO backface-visibility).
+var DICE_PIPS = {
+  1: [[2, 2]],
+  2: [[1, 1], [3, 3]],
+  3: [[1, 1], [2, 2], [3, 3]],
+  4: [[1, 1], [1, 3], [3, 1], [3, 3]],
+  5: [[1, 1], [1, 3], [2, 2], [3, 1], [3, 3]],
+  6: [[1, 1], [1, 3], [2, 1], [2, 3], [3, 1], [3, 3]]
+}; // [row, col], 1-indexed, pip count always equals the value
+var flatDiceTimers = {}; // canonical -> interval id, cleared on settle
+function setDiceFace(faceEl, value) {
+  faceEl.innerHTML = '';
+  DICE_PIPS[value].forEach(function (p) {
+    var sp = document.createElement('span');
+    sp.style.gridRow = p[0]; sp.style.gridColumn = p[1];
+    faceEl.appendChild(sp);
+  });
+  faceEl.setAttribute('data-value', value);
+  faceEl.setAttribute('data-pips', DICE_PIPS[value].length);
+}
+function createFlatDice(canonical, last) {
+  var wrap = document.createElement('div'); wrap.className = 'flat-dice-slot';
+  var shadow = document.createElement('div'); shadow.className = 'dice-podium';
+  wrap.appendChild(shadow);
+  var face = document.createElement('div'); face.className = 'flat-dice-face';
+  face.id = 'diceFace-' + canonical;
+  setDiceFace(face, last);
+  wrap.appendChild(face);
+  return wrap;
+}
 function renderPlayerDice() {
   // Dice are distributed into four fixed corner slots, not a tray above
   // the board: top strip Yellow(0, left) + Green(1, right), bottom strip
   // Blue(3, left) + Red(2, right) — each colour's home corner. Inactive
   // slots are emptied and hidden with visibility (not display:none), so
   // 2-player games show only Yellow + Red without the other slots
-  // shifting position. Cube/final-face IDs are unchanged, so the tumble
-  // and final-face code below keeps working untouched.
+  // shifting position.
   var stage = el('ludoStage');
   if (stage) { stage.classList.remove('count-2', 'count-4'); }
   var active = game ? game.active : lastLudoActive;
@@ -339,20 +377,11 @@ function renderPlayerDice() {
     // a pending token move, and the computer's turn in stake mode).
     // Non-current dice get no handler and do nothing when clicked.
     if (isCurrent) { unit.onclick = rollDice; unit.title = 'Click to roll'; }
-    var scene = document.createElement('div'); scene.className = 'player-dice-scene';
-    var cube = document.createElement('div');
-    cube.className = 'dice player-cube ' + DICE_SHOW_CLASS[last];
-    cube.id = 'playerCube-' + canonical;
-    for (var f = 1; f <= 6; f++) {
-      var faceEl = document.createElement('div'); faceEl.className = 'face face-' + f;
-      for (var s = 0; s < f; s++) faceEl.appendChild(document.createElement('span'));
-      cube.appendChild(faceEl);
-    }
-    scene.appendChild(cube);
+    unit.appendChild(createFlatDice(canonical, last));
     var label = document.createElement('div'); label.className = 'player-dice-label';
     label.setAttribute('aria-label', PLAYER_NAMES[canonical] + ' dice');
     label.innerHTML = '<i class="dot ' + PLAYER_CSS[canonical] + '"></i>';
-    unit.appendChild(scene); unit.appendChild(label);
+    unit.appendChild(label);
     slot.appendChild(unit);
   }
 }
@@ -362,16 +391,33 @@ function setPlayerDiceResult(canonical, v) {
 }
 function animatePlayerDiceRoll(canonical, value, done) {
   playDiceRattle();
-  var cube = el('playerCube-' + canonical);
-  if (!cube) { setPlayerDiceResult(canonical, value); if (done) done(); return; }
-  cube.className = 'dice player-cube tumbling';
-  setTimeout(function () {
-    cube.className = 'dice player-cube ' + DICE_SHOW_CLASS[value];
-    var scene = cube.parentNode;
-    if (scene) { scene.classList.add('dice-settle'); setTimeout(function () { scene.classList.remove('dice-settle'); }, 400); }
-    setPlayerDiceResult(canonical, value);
-    setTimeout(done, 380);
-  }, 950);
+  var face = el('diceFace-' + canonical);
+  if (!face) { setPlayerDiceResult(canonical, value); if (done) done(); return; }
+  if (flatDiceTimers[canonical]) { clearInterval(flatDiceTimers[canonical]); delete flatDiceTimers[canonical]; }
+  // Tumble in 2D only: cycle random pip faces every ~80ms for ~900ms
+  // with a small rotate/bounce (never edge-on, never hidden), then
+  // settle on the EXACT rolled face and stop. The settled face is a
+  // real pip grid, so its count equals the rolled number by construction.
+  var steps = 0;
+  var timer = setInterval(function () {
+    if (!game) { clearInterval(timer); delete flatDiceTimers[canonical]; return; }
+    steps++;
+    var r = Math.floor(Math.random() * 6) + 1;
+    setDiceFace(face, r);
+    var rot = (Math.random() * 24 - 12).toFixed(1);
+    var dy = (-Math.random() * 6).toFixed(1);
+    var sc = (1 + Math.random() * 0.08).toFixed(2);
+    face.style.transform = 'rotateX(6deg) rotateY(-8deg) rotateZ(' + rot + 'deg) translateY(' + dy + 'px) scale(' + sc + ')';
+    if (steps >= 11) {
+      clearInterval(timer); delete flatDiceTimers[canonical];
+      setDiceFace(face, value);
+      face.style.transform = ''; // back to the CSS base tilt, fully visible
+      if (!game) return; // restarted mid-tumble: do not write a stale Rolled label
+      setPlayerDiceResult(canonical, value);
+      setTimeout(done, 200);
+    }
+  }, 80);
+  flatDiceTimers[canonical] = timer;
 }
 
 // ---------- Game flow ----------
