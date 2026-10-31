@@ -349,6 +349,7 @@ html{scroll-padding-top:130px}
 .player-cube.tumbling{animation:diceTumble .95s cubic-bezier(.3,.7,.3,1)}
 .player-dice-scene.dice-settle{animation:diceSettle .35s ease}
 .player-dice-label{font-size:clamp(12px,3vw,15px);font-weight:800;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.player-dice-label .dot{width:20px;height:20px}
 .player-dice.active .player-dice-label{font-weight:900}
 .player-final-face{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:1px;
   background:#ffffff;border:2px solid #111827;border-radius:12px;box-shadow:0 6px 14px rgba(0,0,0,.45);padding:5px}
@@ -363,4 +364,84 @@ html{scroll-padding-top:130px}
 @media (max-width:560px){
   .player-dice-row.count-4{grid-template-columns:repeat(2,1fr)}
   .dice-controls{min-width:0;width:100%}
+}
+
+/* ===== ONE-SCREEN LUDO STAGE + DICE AROUND THE BOARD =====
+   Problem fixed: dice used to sit in a tray ABOVE the board, under the
+   header, title, mode description and mode buttons, so on mobile the
+   board + Roll button were below the fold and the whole page scrolled.
+   Now, while a match is active, the setup text/mode buttons and the
+   section title are hidden, the header compacts, and the stage itself
+   is sized to the viewport (100dvh). Dice live in two strips around
+   the board: top = Yellow (left) + Green (right), bottom = Blue (left)
+   + Red (right), matching each home corner. In 2-player games only
+   Yellow + Red slots are filled; Green/Blue slots stay in place but
+   visibility:hidden, so the filled dice never shift.
+   Height budget, corrected after a narrow-width live test cut off the
+   bottom dice: the old 124px/320px budget under-counted the real
+   heights (the site header can wrap to ~90-110px on narrow screens,
+   plus layout/card padding, view head, both dice strips and the note),
+   so the bottom dice fell below the fold. New budget hides the whole
+   site header while a match is active (the Back button in the view
+   head is the exit) and hides the bottom note line, so the only
+   heights outside the stage are: layout padding 4+4 + card padding
+   8+8 + view-head Back button ~36 = ~60, hence stage height =
+   100dvh - 60px. Inside the stage (note hidden): bar ~46 + two dice
+   strips (PC worst: 76 each for 2P cubes at 72px + padding; narrow
+   strips are fixed at 48/44px cubes, so <=52 each) + gaps 3x4=12 +
+   frame padding 6+6=12 = ~234 worst (PC) / ~174 (narrow). Total
+   non-board height = ~60 outside + ~234 inside = ~294, so the board
+   formula uses a safely larger 300px budget: board width =
+   min(100%, 560px, 100dvh - 300px). That leaves >=6px slack on the
+   worst PC case and much more on narrow widths, where the board is
+   usually width-limited anyway. On a very short 568px viewport the
+   board shrinks to ~256px inner — small, but that is the price of
+   fitting everything without scrolling. No body overflow:hidden is
+   set globally; only the active Ludo stage is clipped
+   (overflow:hidden), so home/Daba/admin/login still scroll when no
+   Ludo match is active. */
+.ludo-view-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ludo-view-head h2{margin:0}
+#ludoView:not(.match-active) .ludo-stage{display:none}
+#ludoView.match-active{padding:8px}
+#ludoView.match-active .ludo-view-head h2{display:none}
+#ludoView.match-active #ludoSetup{display:none}
+/* Header hidden ENTIRELY during a match (Back in the view head is the
+   exit). This is the single biggest saving vs the old compact header:
+   on narrow screens the header wrapped to ~90-110px, which the old
+   124px budget never covered. No global body overflow:hidden. */
+body.ludo-active .topbar{display:none}
+body.ludo-active .layout{padding:4px}
+.ludo-stage{display:flex;flex-direction:column;gap:6px;min-height:0}
+#ludoView.match-active .ludo-stage{height:calc(100dvh - 60px);gap:4px;overflow:hidden}
+#ludoView.match-active .ludo-stage-note{display:none}
+.ludo-stage-bar{display:flex;gap:8px;align-items:center;min-height:44px;flex:0 0 auto;min-width:0}
+.ludo-stage-bar #turnLabel{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700}
+.ludo-stage-bar #stakeLabel{flex:0 0 auto;font-size:12px;padding:5px 9px;white-space:nowrap}
+.ludo-stage-bar #rollBtn{flex:0 0 auto;min-height:44px;padding:10px 16px;font-size:15px}
+.ludo-stage-bar #soundToggleBtn{flex:0 0 auto;min-height:44px}
+.ludo-stage-bar #resetBtn{flex:0 0 auto;min-height:44px}
+.ludo-stage-bar #diceResult{flex:0 0 auto;font-size:13px;white-space:nowrap}
+.dice-strip{display:flex;justify-content:space-between;align-items:center;gap:8px;flex:0 0 auto;min-height:0}
+.dice-slot{flex:0 1 auto;min-width:0}
+.dice-slot.empty{visibility:hidden}
+.ludo-stage .player-dice{flex-direction:row;align-items:center;gap:8px;padding:2px 4px}
+.ludo-stage .player-dice-label{font-size:clamp(11px,3vw,14px)}
+.ludo-stage.count-2 .player-dice{--cube:clamp(48px,14vw,80px)}
+.ludo-stage.count-4 .player-dice{--cube:clamp(44px,12vw,64px)}
+.ludo-stage.count-2 .player-final-face{width:clamp(28px,8vw,44px);height:clamp(28px,8vw,44px)}
+.ludo-stage.count-4 .player-final-face{width:clamp(24px,7vw,34px);height:clamp(24px,7vw,34px)}
+.ludo-board-area{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+#ludoView.match-active .ludo-board-frame{width:min(100%,560px,calc(100dvh - 300px));margin:0;padding:6px}
+#ludoView.match-active .win-banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(90%,420px);margin:0;z-index:10}
+.ludo-stage-note{margin:0;font-size:12px;line-height:1.4;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+@media (max-width:560px){
+  #ludoView.match-active .ludo-stage-bar #stakeLabel{display:none}
+  #ludoView.match-active .ludo-stage-bar #diceResult{font-size:12px}
+  #ludoView.match-active .ludo-stage-bar #rollBtn{padding:10px 12px;font-size:14px}
+  /* Fixed narrow dice sizes (instead of vw-based clamps) so strip
+     heights are bounded and predictable: 2P strip = 48+4=52px,
+     4P strip = 44+4=48px, at any width from 320 to 560px. */
+  .ludo-stage.count-2 .player-dice{--cube:48px}
+  .ludo-stage.count-4 .player-dice{--cube:44px}
 }
