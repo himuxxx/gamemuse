@@ -307,3 +307,60 @@ html{scroll-padding-top:130px}
   #ludoView,#chessView,.ludo-board-frame,.ludo-board-wrap,.board-wrap,.dice-tray{scroll-margin-top:190px}
   .final-dice-face{width:72px;height:72px;min-width:72px;min-height:72px}
 }
+
+/* ===== PER-PLAYER DICE (2P = 2 dice, 4P = 4 dice) =====
+   Tray width matches the board frame: min(100%, 560px).
+   Dice are CSS 3D cubes, one per active player, labelled by colour.
+   Only the current player's dice is highlighted; the rest are dimmed
+   and keep showing their last roll. Cube size is a CSS variable so the
+   face depth (translateZ = half the cube) always matches the cube size.
+   2-dice: up to 96px on PC, shrinking on mobile.
+   4-dice: up to 72px on PC, 2x2 grid on mobile (<=560px), 4 in a row on PC.
+   At 320px: 2-dice cube = 64px (2*64 + gap fits a ~272px tray inner width);
+   4-dice cube = 51px in a 2-column grid (each column ~130px wide) — fits.
+   At 375px: 2-dice = 68px, 4-dice = 60px — fits. At PC: capped at 96px / 72px. */
+.dice-tray{width:min(100%,560px)}
+.player-dice-row{width:100%;margin:0 auto 12px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+.player-dice-row.count-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.player-dice{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px;border-radius:14px;
+  border:2px solid transparent;opacity:.45;filter:saturate(.7);transition:opacity .2s ease,transform .2s ease,border-color .2s ease;min-width:0}
+.player-dice.active{opacity:1;filter:none;border-color:#22c55e;transform:scale(1.03);box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.player-dice-row.count-2 .player-dice{--cube:clamp(64px,18vw,96px)}
+.player-dice-row.count-4 .player-dice{--cube:clamp(48px,16vw,72px)}
+.player-dice-scene{width:var(--cube);height:var(--cube);perspective:800px;display:flex;align-items:center;justify-content:center}
+.player-cube{width:var(--cube);height:var(--cube);position:relative;transform-style:preserve-3d;
+  filter:drop-shadow(0 10px 12px rgba(0,0,0,.5));transition:transform .45s cubic-bezier(.2,.9,.3,1.2)}
+.player-cube .face{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:clamp(6px,1.5vw,12px);background:#ffffff;border:2px solid #111827;border-radius:16%;
+  box-shadow:inset 0 3px 0 #ffffff,inset 0 -8px 14px rgba(0,0,0,.12);backface-visibility:hidden}
+.player-cube .face span{background:#000000;border-radius:50%;width:clamp(8px,2vw,14px);height:clamp(8px,2vw,14px);margin:auto}
+.player-cube .face-1{transform:rotateY(0deg) translateZ(calc(var(--cube) / 2))}
+.player-cube .face-6{transform:rotateY(180deg) translateZ(calc(var(--cube) / 2))}
+.player-cube .face-3{transform:rotateY(90deg) translateZ(calc(var(--cube) / 2))}
+.player-cube .face-4{transform:rotateY(-90deg) translateZ(calc(var(--cube) / 2))}
+.player-cube .face-2{transform:rotateX(90deg) translateZ(calc(var(--cube) / 2))}
+.player-cube .face-5{transform:rotateX(-90deg) translateZ(calc(var(--cube) / 2))}
+.player-cube.show-1{transform:rotateX(0deg) rotateY(0deg)}
+.player-cube.show-6{transform:rotateX(0deg) rotateY(180deg)}
+.player-cube.show-3{transform:rotateX(0deg) rotateY(-90deg)}
+.player-cube.show-4{transform:rotateX(0deg) rotateY(90deg)}
+.player-cube.show-2{transform:rotateX(-90deg) rotateY(0deg)}
+.player-cube.show-5{transform:rotateX(90deg) rotateY(0deg)}
+.player-cube.tumbling{animation:diceTumble .95s cubic-bezier(.3,.7,.3,1)}
+.player-dice-scene.dice-settle{animation:diceSettle .35s ease}
+.player-dice-label{font-size:clamp(12px,3vw,15px);font-weight:800;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.player-dice.active .player-dice-label{font-weight:900}
+.player-final-face{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:1px;
+  background:#ffffff;border:2px solid #111827;border-radius:12px;box-shadow:0 6px 14px rgba(0,0,0,.45);padding:5px}
+.player-dice-row.count-2 .player-final-face{width:clamp(32px,9vw,48px);height:clamp(32px,9vw,48px)}
+.player-dice-row.count-4 .player-final-face{width:clamp(28px,8vw,36px);height:clamp(28px,8vw,36px)}
+.player-final-face i{display:block}
+.player-final-face i.pip{background:#000000;border-radius:50%;width:70%;aspect-ratio:1;margin:auto}
+.player-final-face.rolling{opacity:.55}
+.token.green{background:radial-gradient(circle at 32% 28%,#bbf7d0,#22c55e 55%,#14532d)}
+.token.blue{background:radial-gradient(circle at 32% 28%,#bfdbfe,#2563eb 55%,#1e3a8a)}
+.dot.green{background:radial-gradient(circle at 30% 30%,#86efac,var(--green))}
+@media (max-width:560px){
+  .player-dice-row.count-4{grid-template-columns:repeat(2,1fr)}
+  .dice-controls{min-width:0;width:100%}
+}
