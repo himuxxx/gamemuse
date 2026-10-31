@@ -97,7 +97,7 @@
         <strong>Practice:</strong> pass-and-play on this device, no stake, no coins change.
         Choose <strong>2 Players</strong> (Yellow vs Red, 2 dice) or <strong>4 Players</strong>
         (Yellow, Green, Red, Blue in clockwise order, 4 dice). Each player has their own dice:
-        only the current player's dice is highlighted and rolls.
+        only the current player's dice is clickable and rolls — click the dice itself.
       </p>
       <div class="mode-row">
         <button id="stakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins, 2 players)</button>
@@ -110,7 +110,7 @@
       <div class="ludo-stage-bar">
         <span id="turnLabel">Log in, then start a match.</span>
         <span id="stakeLabel" class="pill">No active stake</span>
-        <button id="rollBtn" class="btn primary" disabled>Roll dice</button>
+        <span class="dice-hint">Dice te click koro</span>
         <button id="soundToggleBtn" class="btn small" type="button" aria-label="Toggle sound">Sound on</button>
         <span id="diceResult" class="dice-result">Roll to start</span>
         <button id="resetBtn" class="btn small">Restart</button>
@@ -142,12 +142,6 @@
   <section class="card game-card" id="chessView" hidden>
     <button id="backFromChess" class="btn small">← All games</button>
     <h2>Daba (Chess) — White vs Black</h2>
-    <p class="muted">
-      <strong>Stake match vs Computer:</strong> entry <strong>10 coins</strong>, winner gets <strong>15 coins</strong>, <strong>5 coins</strong> commission (10 + 10 = 20 pot).
-      You play White; the computer plays Black. Blocked below 10 coins; restarting mid-match does not refund the entry.<br>
-      <strong>Practice:</strong> 2-player pass-and-play, no stake, no coins change.
-      Full rules: legal moves only, check, checkmate, stalemate, castling, en passant, and pawn promotion (automatic to queen).
-    </p>
     <div class="mode-row">
       <button id="chessStakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins)</button>
       <button id="chessPracticeBtn" class="btn">▶ Practice — 2 players, same device</button>
@@ -160,11 +154,6 @@
     <p id="chessCaptured" class="muted">Captured: —</p>
     <div class="board-wrap wood-frame chess-wrap">
       <div id="chessBoard" class="chess-board" aria-label="Chess board"></div>
-    </div>
-    <p id="chessStatus" class="muted">Click a White piece (or the side to move in practice) to see its legal moves, then click a highlighted square.</p>
-    <div class="legend">
-      <span><span class="chess-mini white">♔</span> White — you in stake mode / Player 1 in practice</span>
-      <span><span class="chess-mini black">♚</span> Black — Computer / Player 2 in practice</span>
     </div>
   </section>
 
