@@ -20,17 +20,28 @@ var PATH = [
 ];
 // Absolute indices that are safe (start squares + classic star squares).
 var SAFE = [0, 8, 13, 21, 26, 34, 39, 47];
-var START = [0, 26]; // Yellow starts at PATH[0], Red at PATH[26]
-// Home columns: 5 coloured squares, then the centre (finished).
+// Starts are spaced 13 squares apart on the 52-square loop, matching SAFE
+// (0, 13, 26, 39): Yellow 0 -> (6,1), Green 13 -> (1,8), Red 26 -> (8,13),
+// Blue 39 -> (13,6). Each player's progress-50 square is adjacent to its
+// home column entry: Yellow (7,0)->(7,1), Green (0,7)->(1,7),
+// Red (7,14)->(7,13), Blue (14,7)->(13,7). Hence these home columns.
+var START = [0, 13, 26, 39];
+// Home columns: 5 coloured squares, then the centre (finished), in
+// canonical order Yellow, Green, Red, Blue.
 var HOME = [
   [[7,1],[7,2],[7,3],[7,4],[7,5]],
-  [[7,13],[7,12],[7,11],[7,10],[7,9]]
+  [[1,7],[2,7],[3,7],[4,7],[5,7]],
+  [[7,13],[7,12],[7,11],[7,10],[7,9]],
+  [[13,7],[12,7],[11,7],[10,7],[9,7]]
 ];
 var YARD = [
-  [[1,1],[1,4],[4,1],[4,4]],       // Yellow yard (top-left)
-  [[10,10],[10,13],[13,10],[13,13]] // Red yard (bottom-right)
+  [[1,1],[1,4],[4,1],[4,4]],         // Yellow yard (top-left)
+  [[1,10],[1,13],[4,10],[4,13]],     // Green yard (top-right)
+  [[10,10],[10,13],[13,10],[13,13]], // Red yard (bottom-right)
+  [[10,1],[10,4],[13,1],[13,4]]      // Blue yard (bottom-left)
 ];
-var PLAYER_NAMES = ['Yellow', 'Red'];
+var PLAYER_NAMES = ['Yellow', 'Green', 'Red', 'Blue'];
+var PLAYER_CSS = ['yellow', 'green', 'red', 'blue'];
 var CENTRE = [7, 7];
 
 // ---------- Storage helpers ----------
@@ -147,9 +158,9 @@ function cellClass(r, c) {
   if (c === 7 && r >= 9 && r <= 13) return 'cell path-blue';
   // Start squares (coloured, with arrows in renderBoard).
   if (r === 6 && c === 1) return 'cell path-yellow start-arrow';
-  if (r === 1 && c === 6) return 'cell path-green start-arrow';
+  if (r === 1 && c === 8) return 'cell path-green start-arrow';
   if (r === 8 && c === 13) return 'cell path-red start-arrow';
-  if (r === 13 && c === 8) return 'cell path-blue start-arrow';
+  if (r === 13 && c === 6) return 'cell path-blue start-arrow';
   for (var i = 0; i < PATH.length; i++) {
     if (PATH[i][0] === r && PATH[i][1] === c) return 'cell' + (SAFE.indexOf(i) >= 0 ? ' safe' : '');
   }
@@ -166,9 +177,9 @@ function cellBackground(r, c) {
   if (c === 7 && r >= 1 && r <= 5) return '#22c55e';
   if (c === 7 && r >= 9 && r <= 13) return '#2563eb';
   if (r === 6 && c === 1) return '#facc15';
-  if (r === 1 && c === 6) return '#22c55e';
+  if (r === 1 && c === 8) return '#22c55e';
   if (r === 8 && c === 13) return '#ef4444';
-  if (r === 13 && c === 8) return '#2563eb';
+  if (r === 13 && c === 6) return '#2563eb';
   return '#ffffff';
 }
 function renderBoard() {
@@ -181,7 +192,7 @@ function renderBoard() {
       d.style.border = '1px solid #111827';
       var idx = -1;
       for (var i = 0; i < PATH.length; i++) if (PATH[i][0] === r && PATH[i][1] === c) idx = i;
-      var startArrows = {'6,1': '→', '1,6': '↑', '8,13': '←', '13,8': '↓'};
+      var startArrows = {'6,1': '→', '1,8': '↓', '8,13': '←', '13,6': '↑'};
       if (startArrows[r + ',' + c]) d.textContent = startArrows[r + ',' + c];
       else if (idx >= 0 && SAFE.indexOf(idx) >= 0) { d.textContent = '★'; d.style.color = '#0f766e'; }
       board.appendChild(d);
@@ -220,7 +231,8 @@ function renderTokens() {
   if (!game) return;
   // Group tokens by square so stacked tokens are offset, not hidden.
   var groups = {};
-  for (var pl = 0; pl < 2; pl++) {
+  for (var ai = 0; ai < game.active.length; ai++) {
+    var pl = game.active[ai];
     for (var t = 0; t < 4; t++) {
       var coord = tokenCoord(pl, t);
       var key = coord[0] + ',' + coord[1];
@@ -234,9 +246,9 @@ function renderTokens() {
       var offset = (j - (list.length - 1) / 2) * 1.6;
       var d = document.createElement('div');
       // Movable highlight is only for a human turn (computer moves itself).
-      var humanTurn = game.mode === 'practice' || game.turn === 0;
-      var movable = humanTurn && game.rolled && game.turn === item.pl && canMove(item.pl, item.t, game.dice);
-      d.className = 'token ' + (item.pl === 0 ? 'yellow' : 'red') + (movable ? ' movable' : '') +
+      var humanTurn = game.mode === 'practice' || ludoTurnId() === 0;
+      var movable = humanTurn && game.rolled && ludoTurnId() === item.pl && canMove(item.pl, item.t, game.dice);
+      d.className = 'token ' + PLAYER_CSS[item.pl] + (movable ? ' movable' : '') +
         (game.players[item.pl].tokens[item.t] === 56 ? ' finished' : '');
       d.style.left = ((coord[1] + 0.5) / 15 * 100 + offset) + '%';
       d.style.top = ((coord[0] + 0.5) / 15 * 100 + offset) + '%';
@@ -278,22 +290,21 @@ function playStep() { playTone(520, 0.06, 'triangle', 0.08); }
 function playCapture() { playTone(700, 0.12, 'sawtooth', 0.08); setTimeout(function () { playTone(300, 0.18, 'sawtooth', 0.08); }, 80); vibrate(60); }
 function playWin() { [523, 659, 784, 1047].forEach(function (f, i) { setTimeout(function () { playTone(f, 0.25, 'triangle', 0.12); }, i * 130); }); vibrate([80, 60, 80, 60, 120]); }
 
-// ---------- Real 3D dice ----------
-// The cube is viewed front-on, so the FRONT face is the shown face.
-// Face geometry (from styles.css): 1=front, 6=back, 3=right, 4=left, 2=top, 5=bottom.
-// To bring a face to the front, rotate the cube by the inverse of that face's
-// own transform. Hence the exact, tested mapping below. Never show a random
-// face while the logic uses another number: animateDiceRoll() only calls
-// its callback AFTER the final show-N class is applied and settled.
+// ---------- Per-player dice ----------
+// One dice per active player, labelled by colour. Only the current
+// player's dice is highlighted and rolls; the others stay dimmed and
+// keep showing their last roll (1 initially). Each dice unit is a CSS 3D
+// cube (the large dice) plus a small settled-face readout showing the
+// same number, so a settled roll is visible even if the cube is small.
+// DICE_SHOW_CLASS is the cube rotation that brings face N to the front.
 var DICE_SHOW_CLASS = { 1: 'show-1', 2: 'show-2', 3: 'show-3', 4: 'show-4', 5: 'show-5', 6: 'show-6' };
-// Always-visible settled face: pip positions on a 3x3 grid (indices 0-8, row-major).
-// Counts match the number exactly: 1->1 pip, 2->2, 3->3, 4->4, 5->5, 6->6.
+// Pip positions on a 3x3 grid (indices 0-8, row-major). Counts match N.
 var DICE_FINAL_PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-function renderFinalDiceFace(v) {
-  var face = el('finalDiceFace'); if (!face || !DICE_FINAL_PIPS[v]) return;
-  face.classList.remove('rolling');
+var lastLudoActive = [0, 2]; // default 2-player dice before any match starts
+function ludoTurnId() { return game ? game.active[game.turnPos] : null; }
+function renderPlayerFinalFace(canonical, v) {
+  var face = el('playerFinal-' + canonical); if (!face || !DICE_FINAL_PIPS[v]) return;
   face.setAttribute('aria-label', 'Dice shows ' + v);
-  face.title = 'Dice shows ' + v;
   face.innerHTML = '';
   for (var i = 0; i < 9; i++) {
     var cell = document.createElement('i');
@@ -301,96 +312,66 @@ function renderFinalDiceFace(v) {
     face.appendChild(cell);
   }
 }
-function setDiceResult(v) {
-  var dr = el('diceResult'); if (dr) dr.textContent = 'Rolled: ' + v;
-  // Called from EVERY settle path (Three.js GSAP, Three.js no-GSAP, CSS fallback),
-  // so this face updates in both paths and then stays visible until the next settle.
-  renderFinalDiceFace(v);
-}
-// ---------- Three.js dice (CDN) with CSS 3D fallback ----------
-// Face numbers, Three.js BoxGeometry order [+x,-x,+y,-y,+z,-z]:
-// right=3, left=4, top=2, bottom=5, front=1, back=6 (opposites 1-6, 2-5, 3-4).
-// To bring a face to the front (+z), rotate by the inverse of its own axis:
-// 1:(0,0) 6:(0,PI) 3:(0,-PI/2) 4:(0,PI/2) 2:(PI/2,0) 5:(-PI/2,0)  [x,y]
-var THREE_DICE_BASE = { 1: [0, 0], 2: [Math.PI / 2, 0], 3: [0, -Math.PI / 2], 4: [0, Math.PI / 2], 5: [-Math.PI / 2, 0], 6: [0, Math.PI] };
-var threeDice = null; // { mesh, renderer, scene, camera }
-function threeDiceTexture(n) {
-  var cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
-  var ctx = cv.getContext('2d');
-  var g = ctx.createLinearGradient(0, 0, 256, 256); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#f8fafc');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
-  ctx.strokeStyle = '#111827'; ctx.lineWidth = 10; ctx.strokeRect(6, 6, 244, 244);
-  var pos = { 1: [[128, 128]], 2: [[64, 64], [192, 192]], 3: [[64, 64], [128, 128], [192, 192]],
-    4: [[64, 64], [192, 64], [64, 192], [192, 192]],
-    5: [[64, 64], [192, 64], [128, 128], [64, 192], [192, 192]],
-    6: [[64, 64], [192, 64], [64, 128], [192, 128], [64, 192], [192, 192]] };
-  ctx.fillStyle = '#000000';
-  pos[n].forEach(function (p) { ctx.beginPath(); ctx.arc(p[0], p[1], 26, 0, Math.PI * 2); ctx.fill(); });
-  return new THREE.CanvasTexture(cv);
-}
-function initThreeDice() {
-  try {
-    if (!window.THREE) throw new Error('Three.js not loaded');
-    var holder = el('threeDice'); if (!holder) throw new Error('threeDice missing');
-    var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100); camera.position.set(0, 0, 3.4);
-    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(140, 140);
-    holder.appendChild(renderer.domElement);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    var dir = new THREE.DirectionalLight(0xffffff, 1.1); dir.position.set(3, 5, 4); scene.add(dir);
-    var mats = [3, 4, 2, 5, 1, 6].map(function (n) {
-      return new THREE.MeshStandardMaterial({ map: threeDiceTexture(n), roughness: 0.35, metalness: 0.05 });
-    });
-    var mesh = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.35, 1.35), mats);
-    scene.add(mesh);
-    threeDice = { mesh: mesh, renderer: renderer, scene: scene, camera: camera };
-    renderer.render(scene, camera);
-    var tray = el('diceTray'); if (tray) tray.classList.remove('three-off');
-    return true;
-  } catch (e) {
-    var tray2 = el('diceTray'); if (tray2) tray2.classList.add('three-off');
-    return false;
+function renderPlayerDice() {
+  var row = el('playerDiceRow'); if (!row) return;
+  var active = game ? game.active : lastLudoActive;
+  row.className = 'player-dice-row count-' + active.length;
+  row.innerHTML = '';
+  for (var ai = 0; ai < active.length; ai++) {
+    var canonical = active[ai];
+    var last = game && game.lastRolls ? (game.lastRolls[canonical] || 1) : 1;
+    var unit = document.createElement('div');
+    unit.className = 'player-dice' + (game && ludoTurnId() === canonical ? ' active' : '');
+    unit.setAttribute('data-player', canonical);
+    var scene = document.createElement('div'); scene.className = 'player-dice-scene';
+    var cube = document.createElement('div');
+    cube.className = 'dice player-cube ' + DICE_SHOW_CLASS[last];
+    cube.id = 'playerCube-' + canonical;
+    for (var f = 1; f <= 6; f++) {
+      var faceEl = document.createElement('div'); faceEl.className = 'face face-' + f;
+      for (var s = 0; s < f; s++) faceEl.appendChild(document.createElement('span'));
+      cube.appendChild(faceEl);
+    }
+    scene.appendChild(cube);
+    var label = document.createElement('div'); label.className = 'player-dice-label';
+    label.innerHTML = '<i class="dot ' + PLAYER_CSS[canonical] + '"></i> ' + PLAYER_NAMES[canonical];
+    var small = document.createElement('div'); small.className = 'player-final-face';
+    small.id = 'playerFinal-' + canonical;
+    small.setAttribute('aria-label', 'Dice shows ' + last);
+    unit.appendChild(scene); unit.appendChild(label); unit.appendChild(small);
+    row.appendChild(unit);
+    renderPlayerFinalFace(canonical, last);
   }
 }
-function threeAnimateDiceRoll(value, done) {
-  var d = threeDice; if (!d) { cssAnimateDiceRoll(value, done); return; }
-  var base = THREE_DICE_BASE[value];
-  function settleTarget(baseVal, cur) { var t = baseVal; while (t < cur + Math.PI * 2) t += Math.PI * 2; return t; }
-  var tx = settleTarget(base[0], d.mesh.rotation.x);
-  var ty = settleTarget(base[1], d.mesh.rotation.y);
-  var tz = settleTarget(0, d.mesh.rotation.z);
-  if (window.gsap) {
-    gsap.to(d.mesh.rotation, { duration: 1.0, ease: 'power2.out', x: tx, y: ty, z: tz,
-      onUpdate: function () { d.renderer.render(d.scene, d.camera); },
-      onComplete: function () { setDiceResult(value); done(); } });
-  } else {
-    d.mesh.rotation.set(base[0], base[1], 0); d.renderer.render(d.scene, d.camera); setDiceResult(value); done();
-  }
+function setPlayerDiceResult(canonical, v) {
+  if (game) game.lastRolls[canonical] = v;
+  var dr = el('diceResult'); if (dr) dr.textContent = 'Rolled: ' + v + ' — ' + PLAYER_NAMES[canonical];
+  renderPlayerFinalFace(canonical, v);
 }
-function cssAnimateDiceRoll(value, done) {
-  var diceEl = el('dice'), scene = el('diceScene');
-  diceEl.className = 'dice tumbling';
-  if (scene) { scene.classList.remove('dice-settle'); void scene.offsetWidth; }
+function animatePlayerDiceRoll(canonical, value, done) {
+  playDiceRattle();
+  var cube = el('playerCube-' + canonical);
+  var small = el('playerFinal-' + canonical);
+  if (small) small.classList.add('rolling');
+  if (!cube) { setPlayerDiceResult(canonical, value); if (done) done(); return; }
+  cube.className = 'dice player-cube tumbling';
   setTimeout(function () {
-    diceEl.className = 'dice ' + DICE_SHOW_CLASS[value];
+    cube.className = 'dice player-cube ' + DICE_SHOW_CLASS[value];
+    var scene = cube.parentNode;
     if (scene) { scene.classList.add('dice-settle'); setTimeout(function () { scene.classList.remove('dice-settle'); }, 400); }
-    setDiceResult(value);
+    setPlayerDiceResult(canonical, value);
+    if (small) small.classList.remove('rolling');
     setTimeout(done, 380);
   }, 950);
 }
-function animateDiceRoll(value, done) {
-  playDiceRattle();
-  // Keep the previous final face visible (dimmed) during the tumble; it is
-  // replaced with the new number only when the roll settles, via setDiceResult.
-  var ff = el('finalDiceFace'); if (ff) ff.classList.add('rolling');
-  if (threeDice) threeAnimateDiceRoll(value, done); else cssAnimateDiceRoll(value, done);
-}
 
 // ---------- Game flow ----------
-function startGame(mode) {
+
+function startGame(mode, playerCount) {
   var wb0 = el('winBanner'); if (wb0) wb0.hidden = true;
+  var count = (mode === 'practice' && playerCount === 4) ? 4 : 2;
+  var active = (count === 4) ? [0, 1, 2, 3] : [0, 2];
+  lastLudoActive = active;
   if (mode === 'stake') {
     var user = currentUser();
     if (!user) { showMsg('Log in first to play a stake match.', true); return; }
@@ -402,53 +383,58 @@ function startGame(mode) {
   }
   game = {
     mode: mode,
-    players: [{ tokens: [-1, -1, -1, -1] }, { tokens: [-1, -1, -1, -1] }],
-    turn: 0, dice: null, rolled: false
+    playerCount: count,
+    active: active,
+    players: [{ tokens: [-1, -1, -1, -1] }, { tokens: [-1, -1, -1, -1] }, { tokens: [-1, -1, -1, -1] }, { tokens: [-1, -1, -1, -1] }],
+    turnPos: 0, dice: null, rolled: false,
+    lastRolls: {}
   };
+  active.forEach(function (id) { game.lastRolls[id] = 1; });
   el('rollBtn').disabled = false;
-  renderTokens(); updateStakeLabel(); updateUserbar();
-  setTurnLabel(mode === 'stake' ? 'Stake match started — Yellow (you) to roll.' : 'Practice started — Yellow (Player 1) to roll.');
+  renderPlayerDice(); renderTokens(); updateStakeLabel(); updateUserbar();
+  setTurnLabel(mode === 'stake' ? 'Stake match started — Yellow (you) to roll.' : (count === 4 ? 'Practice started — Yellow (Player 1) to roll. 4 players: Yellow, Green, Red, Blue.' : 'Practice started — Yellow (Player 1) to roll.'));
   el('gameMessage').textContent = 'Roll the dice. A 6 lets a token leave home, and also gives an extra roll.';
   if (mode === 'stake') showMsg('Stake match started: 10 coins deducted. Winner gets 15 coins, 5 coins go to system commission.', false);
 }
 function rollDice() {
   if (!game || game.rolled) return;
-  if (game.mode === 'stake' && game.turn === 1) return; // computer rolls itself
+  var turnId = ludoTurnId();
+  if (game.mode === 'stake' && turnId !== 0) return; // computer rolls itself
   game.rolled = true; // lock out double rolls during the tumble
   var value = Math.floor(Math.random() * 6) + 1;
-  animateDiceRoll(value, function () {
+  animatePlayerDiceRoll(turnId, value, function () {
     if (!game) return;
     game.dice = value;
-    var moves = movableTokens(game.turn, value);
+    var moves = movableTokens(turnId, value);
     if (moves.length === 0) {
-      setTurnLabel(PLAYER_NAMES[game.turn] + ' rolled ' + value + ' — no move possible. Turn passes.');
+      setTurnLabel(PLAYER_NAMES[turnId] + ' rolled ' + value + ' — no move possible. Turn passes.');
       renderTokens();
-      setTimeout(function () { if (game) { game.rolled = false; game.turn = 1 - game.turn; afterTurnChange(); } }, 900);
+      setTimeout(function () { if (game) { game.rolled = false; game.turnPos = (game.turnPos + 1) % game.active.length; afterTurnChange(); } }, 900);
     } else {
-      setTurnLabel(PLAYER_NAMES[game.turn] + ' rolled ' + value + ' — click a highlighted token to move it.');
+      setTurnLabel(PLAYER_NAMES[turnId] + ' rolled ' + value + ' — click a highlighted token to move it.');
       renderTokens();
-      if (game.mode === 'stake' && game.turn === 1) setTimeout(computerMove, 700);
     }
   });
 }
 function afterTurnChange() {
   if (!game) return;
-  setTurnLabel(PLAYER_NAMES[game.turn] + ' to roll.');
-  el('rollBtn').disabled = (game.mode === 'stake' && game.turn === 1);
-  renderTokens();
-  if (game.mode === 'stake' && game.turn === 1) setTimeout(function () { if (game) rollDiceComputer(); }, 600);
+  var turnId = ludoTurnId();
+  setTurnLabel(PLAYER_NAMES[turnId] + ' to roll.');
+  el('rollBtn').disabled = (game.mode === 'stake' && turnId === 2);
+  renderPlayerDice(); renderTokens();
+  if (game.mode === 'stake' && turnId === 2) setTimeout(function () { if (game) rollDiceComputer(); }, 600);
 }
 function rollDiceComputer() {
-  if (!game || game.rolled || game.turn !== 1) return;
+  if (!game || game.rolled || ludoTurnId() !== 2) return;
   game.rolled = true;
   var value = Math.floor(Math.random() * 6) + 1;
-  animateDiceRoll(value, function () {
+  animatePlayerDiceRoll(2, value, function () {
     if (!game) return;
     game.dice = value;
-    var moves = movableTokens(1, value);
+    var moves = movableTokens(2, value);
     if (moves.length === 0) {
       setTurnLabel('Computer rolled ' + value + ' — no move. Your turn.');
-      setTimeout(function () { if (game) { game.rolled = false; game.turn = 0; afterTurnChange(); } }, 900);
+      setTimeout(function () { if (game) { game.rolled = false; game.turnPos = (game.turnPos + 1) % game.active.length; afterTurnChange(); } }, 900);
     } else {
       setTurnLabel('Computer rolled ' + value + '.');
       renderTokens();
@@ -456,34 +442,129 @@ function rollDiceComputer() {
     }
   });
 }
-function computerMove() {
-  if (!game || !game.rolled || game.turn !== 1) return;
-  var moves = movableTokens(1, game.dice);
-  if (!moves.length) return;
-  // Simple AI, in priority order: finish > capture > leave home > move furthest.
-  var best = moves[0], bestScore = -1;
-  moves.forEach(function (t) {
-    var p = game.players[1].tokens[t];
-    var score = 0;
-    var next = p === -1 ? 0 : p + game.dice;
-    if (next === 56) score += 100;
-    if (next <= 50) {
-      var abs = absoluteIndex(1, next);
-      if (SAFE.indexOf(abs) < 0) {
-        for (var i = 0; i < 4; i++) {
-          var op = game.players[0].tokens[i];
-          if (op >= 0 && op <= 50 && absoluteIndex(0, op) === abs) score += 50;
-        }
-      }
+// ---------- Computer AI (stake mode, Red) ----------
+// Human-like scoring over EVERY legal move, from the resulting position.
+// The old AI only pushed the furthest token, so with 3 tokens out it kept
+// moving the same one. This version weighs finish, capture, danger,
+// escape, leaving home, spreading tokens and progress — with a small
+// random jitter, so it is not perfectly predictable and never always
+// picks the first move on a tie. Only legal moves are evaluated (no
+// deep search), so it stays fast.
+function capturedByMove(player, tokenIdx, dice) {
+  var p = game.players[player].tokens[tokenIdx];
+  var next = p === -1 ? 0 : p + dice;
+  var out = [];
+  if (next > 50) return out;
+  var abs = absoluteIndex(player, next);
+  if (SAFE.indexOf(abs) >= 0) return out;
+  game.active.forEach(function (opp) {
+    if (opp === player) return;
+    for (var i = 0; i < 4; i++) {
+      var op = game.players[opp].tokens[i];
+      if (op >= 0 && op <= 50 && absoluteIndex(opp, op) === abs) out.push({ player: opp, token: i });
     }
-    if (p === -1) score += 20;
-    score += next;
+  });
+  return out;
+}
+// True if a token sitting at `progress` (loop only) could be captured by
+// an active opponent rolling 1-6 next turn. Safe squares, home columns,
+// the centre, and squares stacked with an own token are not in danger.
+// `removed` lists opponent tokens already captured by the move being
+// scored, so they cannot threaten the landing square.
+function tokenInDanger(player, tokenIdx, progress, removed) {
+  if (progress < 0 || progress > 50) return false; // yard, home column, centre
+  var abs = absoluteIndex(player, progress);
+  if (SAFE.indexOf(abs) >= 0) return false;
+  // Stacked with an own token counts as safe for scoring purposes.
+  for (var s = 0; s < 4; s++) {
+    if (s !== tokenIdx && game.players[player].tokens[s] === progress) return false;
+  }
+  for (var a = 0; a < game.active.length; a++) {
+    var opp = game.active[a];
+    if (opp === player) continue;
+    for (var i = 0; i < 4; i++) {
+      if (removed && removed.some(function (c) { return c.player === opp && c.token === i; })) continue;
+      var op = game.players[opp].tokens[i];
+      if (op < 0 || op > 50) continue;
+      var dist = (abs - absoluteIndex(opp, op) + 52) % 52;
+      if (dist >= 1 && dist <= 6) return true;
+    }
+  }
+  return false;
+}
+// Score one legal move. `ctx` is precomputed in computerMove: whether any
+// legal move finishes or captures, and whether any out token is in danger.
+// Scores (jitter excluded): finish 1000, capture 400 + captured-token
+// value (near-finish 150 / mid 80 / low 40), escape from danger to a safe
+// square/home/stacked 300, leave home 180 (+60 spread bonus when nothing
+// is in danger and no finish/capture is on offer), home-column entry 120,
+// stacked landing 120, danger landing -220 (non-capture moves only),
+// leader penalty -100 when another out token trails by 12+, lagging-token
+// bonus +80 when the moved token trails the leader by 12+, progress
+// +0.4 per progress step. Jitter is +0..30.
+function scoreComputerMove(player, tokenIdx, dice, ctx) {
+  var p = game.players[player].tokens[tokenIdx];
+  var next = p === -1 ? 0 : p + dice;
+  var score = 0;
+  if (next === 56) return 1000 + Math.random() * 30; // finish: highest, no danger possible
+  var captured = capturedByMove(player, tokenIdx, dice);
+  var inDangerNow = p >= 0 && p <= 50 && tokenInDanger(player, tokenIdx, p, []);
+  var landsSafe = (next >= 51) || (next <= 50 && SAFE.indexOf(absoluteIndex(player, next)) >= 0) ||
+    game.players[player].tokens.some(function (v, i) { return i !== tokenIdx && v === next; });
+  if (captured.length) {
+    score += 400;
+    captured.forEach(function (c) {
+      var op = game.players[c.player].tokens[c.token];
+      score += op >= 40 ? 150 : (op >= 20 ? 80 : 40); // high-value / near-finish victim counts more
+    });
+    // A capture that lands in immediate danger is worth much less,
+    // unless the victim was high-value / near-finish.
+    if (tokenInDanger(player, tokenIdx, next, captured)) {
+      var highValue = captured.some(function (c) { return game.players[c.player].tokens[c.token] >= 40; });
+      score += highValue ? -100 : -250;
+    }
+  } else {
+    // Escape: a token currently in danger reaching safety.
+    if (inDangerNow && landsSafe) score += 300;
+    // Avoid leaving a single token vulnerable on a non-safe square.
+    if (next <= 50 && !landsSafe && tokenInDanger(player, tokenIdx, next, [])) score -= 220;
+  }
+  if (p === -1) {
+    score += 180; // leave home with a 6: spread tokens instead of pushing one
+    if (!ctx.hasCapture && !ctx.hasFinish && !ctx.anyInDanger) score += 60;
+  }
+  if (next >= 51 && next <= 55) score += 120; // entering the home column
+  if (next <= 50 && !captured.length && game.players[player].tokens.some(function (v, i) { return i !== tokenIdx && v === next; })) score += 120; // stacking up
+  // Spread / balance: do not keep pushing the same leading token while
+  // others trail far behind; reward a lagging token when scores are close.
+  var out = game.players[player].tokens.filter(function (v) { return v >= 0 && v < 56; });
+  var leader = out.length ? Math.max.apply(null, out) : 0;
+  if (p >= 0 && p === leader && out.some(function (v) { return leader - v >= 12; })) score -= 100;
+  if (p >= 0 && leader - p >= 12) score += 80;
+  score += next * 0.4; // progress: small, never outweighs safety/capture/finish
+  score += Math.random() * 30; // tie-break jitter: not perfectly predictable
+  return score;
+}
+function computerMove() {
+  if (!game || !game.rolled || ludoTurnId() !== 2) return;
+  var moves = movableTokens(2, game.dice);
+  if (!moves.length) return;
+  var ctx = { hasFinish: false, hasCapture: false, anyInDanger: false };
+  moves.forEach(function (t) {
+    var p = game.players[2].tokens[t];
+    if (p !== -1 && p + game.dice === 56) ctx.hasFinish = true;
+    if (capturedByMove(2, t, game.dice).length) ctx.hasCapture = true;
+    if (p >= 0 && p <= 50 && tokenInDanger(2, t, p, [])) ctx.anyInDanger = true;
+  });
+  var best = moves[0], bestScore = -Infinity;
+  moves.forEach(function (t) {
+    var score = scoreComputerMove(2, t, game.dice, ctx);
     if (score > bestScore) { bestScore = score; best = t; }
   });
-  doMove(1, best);
+  doMove(2, best);
 }
 function doMove(player, tokenIdx) {
-  if (!game || !game.rolled || game.turn !== player || game.animating) return;
+  if (!game || !game.rolled || ludoTurnId() !== player || game.animating) return;
   if (!canMove(player, tokenIdx, game.dice)) return;
   var p = game.players[player].tokens[tokenIdx];
   var next = p === -1 ? 0 : p + game.dice;
@@ -493,11 +574,13 @@ function doMove(player, tokenIdx) {
   if (next <= 50) {
     var abs = absoluteIndex(player, next);
     if (SAFE.indexOf(abs) < 0) {
-      var opp = 1 - player;
-      for (var i = 0; i < 4; i++) {
-        var op = game.players[opp].tokens[i];
-        if (op >= 0 && op <= 50 && absoluteIndex(opp, op) === abs) capturedIdx.push(i);
-      }
+      game.active.forEach(function (opp) {
+        if (opp === player) return;
+        for (var i = 0; i < 4; i++) {
+          var op = game.players[opp].tokens[i];
+          if (op >= 0 && op <= 50 && absoluteIndex(opp, op) === abs) capturedIdx.push({ player: opp, token: i });
+        }
+      });
     }
   }
   game.animating = true;
@@ -509,7 +592,7 @@ function doMove(player, tokenIdx) {
     playStep();
     renderTokens();
     if (step < stepCount) { setTimeout(stepFn, 170); return; }
-    capturedIdx.forEach(function (i) { game.players[1 - player].tokens[i] = -1; });
+    capturedIdx.forEach(function (c) { game.players[c.player].tokens[c.token] = -1; });
     if (capturedIdx.length) playCapture();
     var captured = capturedIdx.length > 0;
     renderTokens();
@@ -519,7 +602,7 @@ function doMove(player, tokenIdx) {
     var extra = game.dice === 6 || captured;
     setTurnLabel(PLAYER_NAMES[player] + ' moved token ' + (tokenIdx + 1) + (captured ? ' and captured an opponent!' : '') + (extra ? ' Extra roll.' : ''));
     game.rolled = false;
-    if (!extra) game.turn = 1 - player;
+    if (!extra) game.turnPos = (game.turnPos + 1) % game.active.length;
     afterTurnChange();
   })();
 }
@@ -558,7 +641,6 @@ function finishGame(winner) {
 // ---------- Auth wiring ----------
 document.addEventListener('DOMContentLoaded', function () {
   renderBoard();
-  initThreeDice();
   document.querySelectorAll('.tab').forEach(function (tab) {
     tab.onclick = function () {
       document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
@@ -593,19 +675,19 @@ document.addEventListener('DOMContentLoaded', function () {
   el('logoutBtn').onclick = function () { saveSession(null); showMsg('Logged out. Your account is still saved in this browser.'); updateUserbar(); };
   if (el('authToggleBtn')) el('authToggleBtn').onclick = function () { el('authCard').hidden = !el('authCard').hidden; };
   if (el('adminLinkBtn')) el('adminLinkBtn').onclick = function () { document.getElementById('adminCard').scrollIntoView({ behavior: 'smooth' }); };
-  el('stakeBtn').onclick = function () { startGame('stake'); };
-  el('practiceBtn').onclick = function () { startGame('practice'); };
+  el('stakeBtn').onclick = function () { startGame('stake', 2); };
+  el('practiceBtn').onclick = function () { startGame('practice', 2); };
+  if (el('practice4Btn')) el('practice4Btn').onclick = function () { startGame('practice', 4); };
   el('resetBtn').onclick = function () {
     if (game && game.mode === 'stake') {
       el('gameMessage').textContent = 'Board restarted. Note: a stake entry already paid is not refunded by restarting.';
     }
-    game = null; el('rollBtn').disabled = true; renderTokens(); updateStakeLabel();
+    game = null; el('rollBtn').disabled = true; renderTokens(); renderPlayerDice(); updateStakeLabel();
     setTurnLabel('Board cleared. Start a new match.');
   };
   el('rollBtn').onclick = rollDice;
   var st = el('soundToggleBtn'); if (st) st.onclick = function () { soundOn = !soundOn; st.textContent = soundOn ? 'Sound on' : 'Sound off'; };
-  el('dice').className = 'dice show-1';
-  renderFinalDiceFace(1);
+  renderPlayerDice();
   updateUserbar();
 });
 
