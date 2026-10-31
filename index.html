@@ -78,52 +78,63 @@
     <p class="hint">Tip: log in first if you want to play a stake match. Practice needs no login.</p>
   </section>
 
-  <!-- Ludo — per-player dice: 2 dice in 2-player games, 4 dice in 4-player games -->
+  <!-- Ludo — one-screen stage: dice AROUND the board, no page scroll while playing.
+       Per-player dice: 2 dice in 2-player games, 4 dice in 4-player games.
+       Top strip = Yellow (left) + Green (right); bottom strip = Blue (left) + Red (right),
+       matching each colour's home corner. In 2-player games only Yellow + Red are filled;
+       the Green/Blue slots stay empty but keep their place, so nothing shifts. -->
   <section class="card game-card" id="ludoView" hidden>
-    <button id="backFromLudo" class="btn small">← All games</button>
-    <h2>Ludo — 2 or 4 players</h2>
-    <p class="muted">
-      <strong>Stake match vs Computer:</strong> 2-player only (you as Yellow vs Red computer).
-      You pay <strong>10 coins</strong> to enter.
-      Winner gets <strong>15 coins</strong>, <strong>5 coins</strong> go to system commission (10 + 10 = 20 pot).
-      If you lose, your 10 coins are lost. You cannot start a stake match with less than 10 coins.<br>
-      <strong>Practice:</strong> pass-and-play on this device, no stake, no coins change.
-      Choose <strong>2 Players</strong> (Yellow vs Red, 2 dice) or <strong>4 Players</strong>
-      (Yellow, Green, Red, Blue in clockwise order, 4 dice). Each player has their own dice:
-      only the current player's dice is highlighted and rolls.
-    </p>
-
-    <div class="mode-row">
-      <button id="stakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins, 2 players)</button>
-      <button id="practiceBtn" class="btn">▶ Practice — 2 players, same device</button>
-      <button id="practice4Btn" class="btn">▶ Practice — 4 players, same device</button>
-      <button id="resetBtn" class="btn small">Restart board</button>
+    <div class="ludo-view-head">
+      <button id="backFromLudo" class="btn small">← All games</button>
+      <h2>Ludo — 2 or 4 players</h2>
+    </div>
+    <div id="ludoSetup">
+      <p class="muted">
+        <strong>Stake match vs Computer:</strong> 2-player only (you as Yellow vs Red computer).
+        You pay <strong>10 coins</strong> to enter.
+        Winner gets <strong>15 coins</strong>, <strong>5 coins</strong> go to system commission (10 + 10 = 20 pot).
+        If you lose, your 10 coins are lost. You cannot start a stake match with less than 10 coins.<br>
+        <strong>Practice:</strong> pass-and-play on this device, no stake, no coins change.
+        Choose <strong>2 Players</strong> (Yellow vs Red, 2 dice) or <strong>4 Players</strong>
+        (Yellow, Green, Red, Blue in clockwise order, 4 dice). Each player has their own dice:
+        only the current player's dice is highlighted and rolls.
+      </p>
+      <div class="mode-row">
+        <button id="stakeBtn" class="btn primary">▶ Stake match vs Computer (10 coins, 2 players)</button>
+        <button id="practiceBtn" class="btn">▶ Practice — 2 players, same device</button>
+        <button id="practice4Btn" class="btn">▶ Practice — 4 players, same device</button>
+      </div>
     </div>
 
-    <div class="status-row">
-      <span id="turnLabel">Log in, then start a match.</span>
-      <span id="stakeLabel" class="pill">No active stake</span>
-    </div>
-    <div class="dice-tray" id="diceTray">
-      <div id="playerDiceRow" class="player-dice-row count-2" aria-label="Player dice"></div>
-      <div class="dice-controls">
-        <button id="rollBtn" class="btn primary big" disabled>Roll dice</button>
+    <div class="ludo-stage count-2" id="ludoStage">
+      <div class="ludo-stage-bar">
+        <span id="turnLabel">Log in, then start a match.</span>
+        <span id="stakeLabel" class="pill">No active stake</span>
+        <button id="rollBtn" class="btn primary" disabled>Roll dice</button>
         <button id="soundToggleBtn" class="btn small" type="button" aria-label="Toggle sound">Sound on</button>
-        <div class="dice-result-row">
-          <span id="diceResult" class="dice-result">Roll to start</span>
+        <span id="diceResult" class="dice-result">Roll to start</span>
+        <button id="resetBtn" class="btn small">Restart</button>
+      </div>
+      <div class="dice-strip dice-strip-top" aria-label="Top player dice">
+        <div class="dice-slot" id="diceSlot-0" data-player="0" aria-label="Yellow dice"></div>
+        <div class="dice-slot" id="diceSlot-1" data-player="1" aria-label="Green dice"></div>
+      </div>
+      <div class="ludo-board-area">
+        <div class="ludo-board-frame">
+          <div class="ludo-board-wrap" id="ludoBoardWrap">
+            <div id="board" class="ludo-board" aria-label="Ludo board"></div>
+            <div class="centre-triangles" aria-hidden="true"><i class="tri tri-top"></i><i class="tri tri-right"></i><i class="tri tri-bottom"></i><i class="tri tri-left"></i></div>
+            <div id="tokensLayer" class="tokens-layer"></div>
+          </div>
         </div>
+        <div id="winBanner" class="win-banner" hidden>Winner!</div>
       </div>
-      <p id="gameMessage" class="muted">Roll a 6 to leave home. Land on an opponent (except on a safe ★ square) to send them home. Exact roll to finish. First to bring all 4 tokens home wins.</p>
-    </div>
-
-    <div class="ludo-board-frame">
-      <div class="ludo-board-wrap" id="ludoBoardWrap">
-        <div id="board" class="ludo-board" aria-label="Ludo board"></div>
-        <div class="centre-triangles" aria-hidden="true"><i class="tri tri-top"></i><i class="tri tri-right"></i><i class="tri tri-bottom"></i><i class="tri tri-left"></i></div>
-        <div id="tokensLayer" class="tokens-layer"></div>
+      <div class="dice-strip dice-strip-bottom" aria-label="Bottom player dice">
+        <div class="dice-slot" id="diceSlot-3" data-player="3" aria-label="Blue dice"></div>
+        <div class="dice-slot" id="diceSlot-2" data-player="2" aria-label="Red dice"></div>
       </div>
+      <p id="gameMessage" class="ludo-stage-note">Roll a 6 to leave home. Land on an opponent (except on a safe ★ square) to send them home. Exact roll to finish. First to bring all 4 tokens home wins.</p>
     </div>
-    <div id="winBanner" class="win-banner" hidden>Winner!</div>
 
   </section>
 
